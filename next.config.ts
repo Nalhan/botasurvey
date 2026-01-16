@@ -1,7 +1,23 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  output: "standalone",
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'cdn.discordapp.com',
+        port: '',
+        pathname: '/avatars/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'wow.zamimg.com',
+        port: '',
+        pathname: '/images/wow/icons/**',
+      },
+    ],
+  },
 };
 
 export default nextConfig;

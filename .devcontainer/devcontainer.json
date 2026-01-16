@@ -1,0 +1,22 @@
+{
+    "name": "WoW Survey App Dev",
+    "image": "mcr.microsoft.com/devcontainers/typescript-node:20",
+    "features": {
+        "ghcr.io/devcontainers/features/node:1": {}
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "dsznajder.es7-react-js-snippets",
+                "bradlc.vscode-tailwindcss",
+                "dbaeumer.vscode-eslint",
+                "esbenp.prettier-vscode"
+            ]
+        }
+    },
+    "forwardPorts": [
+        3000
+    ],
+    "postCreateCommand": "npm install && npm run db:push",
+    "remoteUser": "node"
+}
