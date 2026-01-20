@@ -51,6 +51,13 @@ export enum TierToken {
     Venerated = "Venerated (Paladin, Priest, Shaman)"
 }
 
+export enum ArmorType {
+    Cloth = "Cloth",
+    Leather = "Leather",
+    Mail = "Mail",
+    Plate = "Plate"
+}
+
 export const CLASS_TIER_TOKENS: Record<string, TierToken> = {
     "death_knight": TierToken.Dreadful,
     "demon_hunter": TierToken.Dreadful,
@@ -68,6 +75,25 @@ export const CLASS_TIER_TOKENS: Record<string, TierToken> = {
     "monk": TierToken.Zenith,
     "rogue": TierToken.Zenith,
     "warrior": TierToken.Zenith
+};
+
+export const CLASS_ARMOR_TYPES: Record<string, ArmorType> = {
+    "mage": ArmorType.Cloth,
+    "priest": ArmorType.Cloth,
+    "warlock": ArmorType.Cloth,
+
+    "demon_hunter": ArmorType.Leather,
+    "druid": ArmorType.Leather,
+    "monk": ArmorType.Leather,
+    "rogue": ArmorType.Leather,
+
+    "evoker": ArmorType.Mail,
+    "hunter": ArmorType.Mail,
+    "shaman": ArmorType.Mail,
+
+    "death_knight": ArmorType.Plate,
+    "paladin": ArmorType.Plate,
+    "warrior": ArmorType.Plate
 };
 
 // Capabilities by Class/Spec
@@ -88,7 +114,7 @@ export const SPEC_CAPABILITIES: Record<string, { buffs: RaidBuff[], utilities: R
 
     // EVOKER
     "evoker": { buffs: [], utilities: [RaidUtility.Bloodlust, RaidUtility.Rescue] },
-    "evoker-augmentation": { buffs: [RaidBuff.Intellect, RaidBuff.Stamina, RaidBuff.AttackPower, RaidBuff.Versatility], utilities: [RaidUtility.Bloodlust, RaidUtility.Rescue] }, // Ebon Might covers a lot vaguely, but standard buff is 3%? Actually Evoker has Bronze Blessing (movement cd reduction). Let's stick to standard party buffs.
+    "evoker-augmentation": { buffs: [], utilities: [RaidUtility.Bloodlust, RaidUtility.Rescue] }, // Ebon Might covers a lot vaguely, but standard buff is 3%? Actually Evoker has Bronze Blessing (movement cd reduction). Let's stick to standard party buffs.
     // Correction: Evoker brings Bloodlust (Fury of the Aspects). 
     // Augmentation is special. Let's keep it simple for now.
     // Actually, Evoker raid buff is "Blessing of the Bronze" which is major movement ability CD reduction. Not in our list.

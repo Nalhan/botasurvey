@@ -57,7 +57,7 @@ export default function InvolvementStep() {
                             key={option.id}
                             onClick={() => setInvolvement(option.id)}
                             className={cn(
-                                "relative cursor-pointer rounded-xl border-2 p-6 transition-all duration-200 hover:scale-105 hover:border-indigo-500/50 bg-card",
+                                "relative cursor-pointer rounded-xl border-2 p-6 transition-all duration-200 md:hover:scale-105 hover:border-indigo-500/50 bg-card",
                                 isSelected ? "border-indigo-500 shadow-lg shadow-indigo-500/20 bg-indigo-500/5" : "border-border"
                             )}
                         >
@@ -73,7 +73,7 @@ export default function InvolvementStep() {
 
             <div className="flex justify-end pt-8">
                 <Button onClick={handleNext} disabled={!involvement} size="lg" className="w-full md:w-auto">
-                    Next Note
+                    Next
                 </Button>
             </div>
         </div>

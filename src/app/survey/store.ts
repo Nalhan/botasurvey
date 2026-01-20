@@ -12,6 +12,11 @@ export type Availability = {
     schedule: Record<string, string[]>; // Day -> Array of time slots or simplified "Available/Not"
 }
 
+export type Profession = {
+    id: string; // e.g., "alchemy"
+    specId: string | null; // e.g., "potions" or null
+}
+
 interface SurveyState {
     step: number;
     involvement: 'core' | 'fill' | 'heroic' | null;
@@ -20,6 +25,7 @@ interface SurveyState {
     // Actually, let's store the list of ranked classes, and a map of spec preferences.
     rankedClasses: string[]; // List of classIds in order.
     specSentiments: Record<string, 'like' | 'neutral' | 'dislike'>; // specId -> sentiment
+    professions: Profession[]; // List of selected professions in order
     comments: string;
 
     setStep: (step: number) => void;
@@ -29,6 +35,8 @@ interface SurveyState {
     removeRankedClass: (classId: string) => void;
     updateRankedClasses: (classes: string[]) => void;
     setSpecSentiment: (specId: string, sentiment: 'like' | 'neutral' | 'dislike') => void;
+    setProfessions: (professions: Profession[]) => void;
+    setProfessionSpec: (professionId: string, specId: string | null) => void;
     setComments: (comments: string) => void;
     initialize: (data: Partial<Omit<SurveyState, 'step' | 'initialize' | 'setStep' | 'setInvolvement' | 'setAvailability' | 'addRankedClass' | 'removeRankedClass' | 'updateRankedClasses' | 'setSpecSentiment' | 'setComments'>>) => void;
 }
@@ -39,6 +47,7 @@ export const useSurveyStore = create<SurveyState>((set) => ({
     availability: null,
     rankedClasses: [],
     specSentiments: {},
+    professions: [],
     comments: "",
 
     setStep: (step) => set({ step }),
@@ -52,6 +61,12 @@ export const useSurveyStore = create<SurveyState>((set) => ({
     updateRankedClasses: (classes) => set({ rankedClasses: classes }),
     setSpecSentiment: (specId, sentiment) => set((state) => ({
         specSentiments: { ...state.specSentiments, [specId]: sentiment }
+    })),
+    setProfessions: (professions) => set({ professions }),
+    setProfessionSpec: (professionId, specId) => set((state) => ({
+        professions: state.professions.map(p =>
+            p.id === professionId ? { ...p, specId } : p
+        )
     })),
     setComments: (comments) => set({ comments }),
     initialize: (data) => set((state) => ({ ...state, ...data })),

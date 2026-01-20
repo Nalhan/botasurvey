@@ -7,10 +7,11 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { ZamIcon } from "@/components/ui/zam-icon";
 import { WOW_CLASSES } from "@/lib/wow-classes";
+import { WOW_PROFESSIONS } from "@/lib/wow-professions";
 import { cn } from "@/lib/utils";
 
 export default function ReviewStep() {
-    const { involvement, availability, rankedClasses, specSentiments, comments, setComments, setStep } = useSurveyStore();
+    const { involvement, availability, rankedClasses, specSentiments, professions, comments, setComments, setStep } = useSurveyStore();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const router = useRouter();
 
@@ -25,6 +26,7 @@ export default function ReviewStep() {
                     availability,
                     rankedClasses,
                     specSentiments,
+                    professions,
                     comments
                 })
             });
@@ -113,10 +115,39 @@ export default function ReviewStep() {
                         {rankedClasses.length === 0 && <p className="text-sm italic text-muted-foreground">No classes ranked.</p>}
                     </div>
                 </div>
+
+                <div className="space-y-3">
+                    <span className="text-muted-foreground text-sm block">Professions</span>
+                    <div className="space-y-3">
+                        {professions.map((p, index) => {
+                            const prof = WOW_PROFESSIONS.find(wp => wp.id === p.id);
+                            if (!prof) return null;
+                            const spec = prof.specs?.find(s => s.id === p.specId);
+                            return (
+                                <div key={p.id} className="flex flex-col gap-2 p-3 rounded-lg bg-card border">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-5 h-5 flex items-center justify-center rounded-full bg-secondary text-[10px] font-bold">
+                                            {index + 1}
+                                        </div>
+                                        <ZamIcon icon={prof.icon} size={20} />
+                                        <span className="font-bold">{prof.name}</span>
+                                    </div>
+                                    {spec && (
+                                        <div className="pl-7 text-xs text-muted-foreground flex items-center gap-1.5">
+                                            <ZamIcon icon={spec.icon} size={14} />
+                                            <span>{spec.name}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                        {professions.length === 0 && <p className="text-sm italic text-muted-foreground">No professions selected.</p>}
+                    </div>
+                </div>
             </div>
 
             <div className="flex justify-between pt-8">
-                <Button variant="ghost" onClick={() => setStep(3)}>Back</Button>
+                <Button variant="ghost" onClick={() => setStep(4)}>Back</Button>
                 <Button onClick={handleSubmit} disabled={isSubmitting} size="lg" className="bg-green-600 hover:bg-green-700">
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Submit Survey

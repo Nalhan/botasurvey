@@ -35,7 +35,7 @@ const DropdownMenuTrigger = ({ children, asChild, open, setOpen, ...props }: any
     );
 };
 
-const DropdownMenuContent = ({ className, align = "center", children, open, ...props }: any) => {
+const DropdownMenuContent = ({ className, align = "center", children, open, setOpen, ...props }: any) => {
     if (!open) return null;
     return (
         <div

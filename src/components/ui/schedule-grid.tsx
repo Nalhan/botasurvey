@@ -3,6 +3,8 @@
 import { cn } from "@/lib/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { BASE_RAID_SESSIONS, RaidSession } from "@/lib/time";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const UTC_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -36,10 +38,13 @@ export function ScheduleGrid({ value, onChange, timezone, className, readOnly }:
     const [isMouseDown, setIsMouseDown] = useState(false);
     const [action, setAction] = useState<'add' | 'remove'>('add');
     const gridRef = useRef<HTMLDivElement>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     // Pre-calculate the mapping from [LocalDay][LocalTime] -> { day: UTCDay, time: UTCTime }
     const [localToUtc, setLocalToUtc] = useState<Record<string, { day: string, time: string }>>({});
     const [raidSlots, setRaidSlots] = useState<Set<string>>(new Set());
+    const [raidColumns, setRaidColumns] = useState<Set<number>>(new Set());
+    const [raidOffscreen, setRaidOffscreen] = useState<{ left: boolean; right: boolean }>({ left: false, right: false });
 
     useEffect(() => {
         const map: Record<string, { day: string, time: string }> = {};
@@ -106,6 +111,18 @@ export function ScheduleGrid({ value, onChange, timezone, className, readOnly }:
         setLocalToUtc(map);
         setRaidSlots(raidSet);
 
+        // Calculate raid columns
+        const raidCols = new Set<number>();
+        TIME_SLOTS.forEach((time, index) => {
+            if (DAYS.some(day => {
+                const actualDay = getActualDay(day, time);
+                return raidSet.has(`${actualDay}-${time}`);
+            })) {
+                raidCols.add(index);
+            }
+        });
+        setRaidColumns(raidCols);
+
     }, [timezone]);
 
 
@@ -161,11 +178,73 @@ export function ScheduleGrid({ value, onChange, timezone, className, readOnly }:
         }
     };
 
+    const checkRaidOffscreen = useCallback(() => {
+        const container = scrollContainerRef.current;
+        if (!container || raidColumns.size === 0) {
+            setRaidOffscreen({ left: false, right: false });
+            return;
+        }
+
+        const { scrollLeft, clientWidth, scrollWidth } = container;
+        const scrollRight = scrollLeft + clientWidth;
+
+        if (scrollWidth <= clientWidth) {
+            setRaidOffscreen({ left: false, right: false });
+            return;
+        }
+
+        let offLeft = false;
+        let offRight = false;
+        const raidIndices = Array.from(raidColumns);
+
+        raidIndices.forEach(index => {
+            // Position: padding (16) + labels (100) + gap (1) + index * (slot (32) + gap (1))
+            const leftPos = 16 + 100 + 1 + index * 33;
+            const rightPos = leftPos + 32;
+
+            if (rightPos < scrollLeft + 40) offLeft = true;
+            if (leftPos > scrollRight - 40) offRight = true;
+        });
+
+        setRaidOffscreen(prev => {
+            if (prev.left === offLeft && prev.right === offRight) return prev;
+            return { left: offLeft, right: offRight };
+        });
+    }, [raidColumns]);
+
     useEffect(() => {
         const handleGlobalMouseUp = () => setIsMouseDown(false);
         window.addEventListener('mouseup', handleGlobalMouseUp);
-        return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
-    }, []);
+
+        const scrollContainer = scrollContainerRef.current;
+        const handleWheel = (e: WheelEvent) => {
+            if (e.deltaY !== 0 && scrollContainer) {
+                // Check if we can actually scroll horizontally
+                const canScrollHorizontally = scrollContainer.scrollWidth > scrollContainer.clientWidth;
+                if (canScrollHorizontally) {
+                    e.preventDefault();
+                    scrollContainer.scrollLeft += e.deltaY;
+                }
+            }
+        };
+
+        if (scrollContainer) {
+            scrollContainer.addEventListener('wheel', handleWheel, { passive: false });
+            scrollContainer.addEventListener('scroll', checkRaidOffscreen);
+            window.addEventListener('resize', checkRaidOffscreen);
+            // Initial check
+            setTimeout(checkRaidOffscreen, 100);
+        }
+
+        return () => {
+            window.removeEventListener('mouseup', handleGlobalMouseUp);
+            if (scrollContainer) {
+                scrollContainer.removeEventListener('wheel', handleWheel);
+                scrollContainer.removeEventListener('scroll', checkRaidOffscreen);
+            }
+            window.removeEventListener('resize', checkRaidOffscreen);
+        };
+    }, [checkRaidOffscreen]);
 
     const [is24Hour, setIs24Hour] = useState(false);
 
@@ -199,81 +278,135 @@ export function ScheduleGrid({ value, onChange, timezone, className, readOnly }:
                 </button>
             </div>
 
-            <div className="overflow-x-auto custom-scrollbar">
-                <div className="min-w-max p-4 pr-8">
-                    {/* Time Header Row */}
-                    <div className="grid grid-cols-[100px_repeat(48,1fr)] gap-[1px] mb-4">
-                        <div />
-                        {TIME_SLOTS.map((time, i) => {
-                            const isHourStart = time.endsWith("00");
-                            return (
-                                <div key={time} className="relative h-10 w-8">
-                                    {isHourStart && (
-                                        <div className="absolute left-0 bottom-0 flex flex-col items-start translate-x-[-0.5px]">
-                                            <span className="text-[9px] font-bold text-muted-foreground whitespace-nowrap -rotate-45 origin-bottom-left ml-[2px] mb-[2px]">
-                                                {formatTimeLabel(time)}
-                                            </span>
-                                            <div className="w-px h-2 bg-border/80" />
-                                        </div>
-                                    )}
-                                    {!isHourStart && (
-                                        <div className="absolute left-0 bottom-0 w-px h-1 bg-border/30 translate-x-[-0.5px]" />
-                                    )}
+            <div className="relative group/grid">
+                <div className="overflow-x-auto custom-scrollbar" ref={scrollContainerRef}>
+                    <div className="min-w-max p-4 pr-8">
+                        {/* Time Header Row */}
+                        <div className="grid grid-cols-[100px_repeat(48,1fr)] gap-[1px] mb-4">
+                            <div />
+                            {TIME_SLOTS.map((time, i) => {
+                                const isHourStart = time.endsWith("00");
+                                return (
+                                    <div key={time} className="relative h-10 w-8">
+                                        {isHourStart && (
+                                            <div className="absolute left-0 bottom-0 flex flex-col items-start translate-x-[-0.5px]">
+                                                <span className="text-[9px] font-bold text-muted-foreground whitespace-nowrap -rotate-45 origin-bottom-left ml-[2px] mb-[2px]">
+                                                    {formatTimeLabel(time)}
+                                                </span>
+                                                <div className="w-px h-2 bg-border/80" />
+                                            </div>
+                                        )}
+                                        {!isHourStart && (
+                                            <div className="absolute left-0 bottom-0 w-px h-1 bg-border/30 translate-x-[-0.5px]" />
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Day Rows */}
+                        <div className="space-y-[4px]">
+                            {DAYS.map(day => (
+                                <div key={day} className="grid grid-cols-[100px_repeat(48,1fr)] gap-[1px] group">
+                                    <div className="flex items-center pr-3">
+                                        <span className="text-xs font-bold text-muted-foreground group-hover:text-foreground transition-colors">
+                                            {day.slice(0, 3)}
+                                        </span>
+                                    </div>
+
+                                    {TIME_SLOTS.map(time => {
+                                        const actualDay = getActualDay(day, time);
+                                        const selected = isSelected(day, time);
+                                        const isRaid = raidSlots.has(`${actualDay}-${time}`);
+                                        const isHourStart = time.endsWith("00");
+                                        const isMidnight = time === "00:00";
+
+                                        return (
+                                            <div
+                                                key={`${day}-${time}`}
+                                                onMouseDown={() => handleMouseDown(day, time)}
+                                                onMouseEnter={() => handleMouseEnter(day, time)}
+                                                className={cn(
+                                                    "h-10 w-8 cursor-pointer transition-all duration-150 border-y border-transparent relative first:rounded-l-md last:rounded-r-md",
+                                                    isMidnight && "border-l-2 border-l-white/20 ml-[1px]",
+                                                    isRaid
+                                                        ? selected
+                                                            ? "bg-emerald-500 border-emerald-400 z-10 scale-[1.02] shadow-lg shadow-emerald-500/20"
+                                                            : "bg-rose-500/10 border-rose-500/20 hover:bg-rose-500/20"
+                                                        : selected
+                                                            ? "bg-indigo-500 border-indigo-400 z-10 scale-[1.02] shadow-lg shadow-indigo-500/20"
+                                                            : "bg-secondary/20 hover:bg-secondary/40",
+                                                    isHourStart && !selected && !isRaid && !isMidnight && "border-l-border/30"
+                                                )}
+                                            >
+                                                {isRaid && (
+                                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+                                                        <span className={cn(
+                                                            "text-[7px] font-black tracking-tighter uppercase -rotate-90 whitespace-nowrap",
+                                                            selected ? "text-white/90" : "text-rose-600/60"
+                                                        )}>RAID</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            );
-                        })}
-                    </div>
-
-                    {/* Day Rows */}
-                    <div className="space-y-[4px]">
-                        {DAYS.map(day => (
-                            <div key={day} className="grid grid-cols-[100px_repeat(48,1fr)] gap-[1px] group">
-                                <div className="flex items-center pr-3">
-                                    <span className="text-xs font-bold text-muted-foreground group-hover:text-foreground transition-colors">
-                                        {day.slice(0, 3)}
-                                    </span>
-                                </div>
-
-                                {TIME_SLOTS.map(time => {
-                                    const actualDay = getActualDay(day, time);
-                                    const selected = isSelected(day, time);
-                                    const isRaid = raidSlots.has(`${actualDay}-${time}`);
-                                    const isHourStart = time.endsWith("00");
-                                    const isMidnight = time === "00:00";
-
-                                    return (
-                                        <div
-                                            key={`${day}-${time}`}
-                                            onMouseDown={() => handleMouseDown(day, time)}
-                                            onMouseEnter={() => handleMouseEnter(day, time)}
-                                            className={cn(
-                                                "h-10 w-8 cursor-pointer transition-all duration-150 border-y border-transparent relative first:rounded-l-md last:rounded-r-md",
-                                                isMidnight && "border-l-2 border-l-white/20 ml-[1px]",
-                                                isRaid
-                                                    ? selected
-                                                        ? "bg-emerald-500 border-emerald-400 z-10 scale-[1.02] shadow-lg shadow-emerald-500/20"
-                                                        : "bg-rose-500/10 border-rose-500/20 hover:bg-rose-500/20"
-                                                    : selected
-                                                        ? "bg-indigo-500 border-indigo-400 z-10 scale-[1.02] shadow-lg shadow-indigo-500/20"
-                                                        : "bg-secondary/20 hover:bg-secondary/40",
-                                                isHourStart && !selected && !isRaid && !isMidnight && "border-l-border/30"
-                                            )}
-                                        >
-                                            {isRaid && (
-                                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
-                                                    <span className={cn(
-                                                        "text-[7px] font-black tracking-tighter uppercase -rotate-90 whitespace-nowrap",
-                                                        selected ? "text-white/90" : "text-rose-600/60"
-                                                    )}>RAID</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
                 </div>
+
+                {/* Scroll Hints */}
+                <AnimatePresence>
+                    {raidOffscreen.left && (
+                        <motion.div
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            className="absolute left-0 top-15 bottom-4 z-20 pointer-events-none flex items-center"
+                        >
+                            <button
+                                onClick={() => {
+                                    const container = scrollContainerRef.current;
+                                    if (container) {
+                                        const raidIndices = Array.from(raidColumns).sort((a, b) => a - b);
+                                        const firstRaidIndex = raidIndices[0];
+                                        const targetScroll = 16 + 100 + 1 + firstRaidIndex * 33 - 150;
+                                        container.scrollTo({ left: targetScroll, behavior: 'smooth' });
+                                    }
+                                }}
+                                className="pointer-events-auto bg-rose-500 text-white text-[10px] font-bold py-4 px-1 rounded-r-xl shadow-2xl shadow-rose-500/40 border border-l-0 border-white/20 flex flex-col items-center gap-2 hover:bg-rose-400 transition-colors group/hint"
+                            >
+                                <ChevronLeft className="w-3 h-3 group-hover/hint:-translate-x-0.5 transition-transform" />
+                                <span className="[writing-mode:vertical-lr] rotate-180 uppercase tracking-widest font-black text-[8px]">Raid</span>
+                            </button>
+                        </motion.div>
+                    )}
+                    {raidOffscreen.right && (
+                        <motion.div
+                            initial={{ opacity: 0, x: 10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 10 }}
+                            className="absolute right-0 top-15 bottom-4 z-20 pointer-events-none flex items-center"
+                        >
+                            <button
+                                onClick={() => {
+                                    const container = scrollContainerRef.current;
+                                    if (container) {
+                                        const raidIndices = Array.from(raidColumns).sort((a, b) => b - a);
+                                        const lastRaidIndex = raidIndices[0];
+                                        const targetScroll = 16 + 100 + 1 + lastRaidIndex * 33 - (container.clientWidth - 150);
+                                        container.scrollTo({ left: targetScroll, behavior: 'smooth' });
+                                    }
+                                }}
+                                className="pointer-events-auto bg-rose-500 text-white text-[10px] font-bold py-4 px-1 rounded-l-xl shadow-2xl shadow-rose-500/40 border border-r-0 border-white/20 flex flex-col items-center gap-2 hover:bg-rose-400 transition-colors group/hint"
+                            >
+                                <ChevronRight className="w-3 h-3 group-hover/hint:translate-x-0.5 transition-transform" />
+                                <span className="[writing-mode:vertical-lr] uppercase tracking-widest font-black text-[8px]">Raid</span>
+                            </button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
             <div className="p-3 border-t bg-secondary/10 flex gap-4 text-[10px] items-center justify-center">

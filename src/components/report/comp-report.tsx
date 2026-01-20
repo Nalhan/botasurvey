@@ -1,17 +1,31 @@
 "use client";
 
 import { Player } from "./report-shell";
-import { CLASS_TIER_TOKENS, getCapabilities, RaidBuff, RaidUtility, TierToken } from "@/lib/raid-data";
+import { CLASS_ARMOR_TYPES, getCapabilities, RaidBuff, RaidUtility, ArmorType } from "@/lib/raid-data";
 import { cn } from "@/lib/utils";
-import { Check, X, Shield, Sword, Heart } from "lucide-react";
+import { Check, X, Shield, Sword, Heart, Info } from "lucide-react";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { WOW_CLASSES } from "@/lib/wow-classes";
+import { ZamIcon } from "@/components/ui/zam-icon";
 
 export function CompReport({ roster }: { roster: Player[] }) {
     // 1. Role Counts
     const roleCounts = { Tank: 0, Healer: 0, Damage: 0 };
+    const classCounts: Record<string, number> = {};
+
     roster.forEach(p => {
         if (p.role === "Tank") roleCounts.Tank++;
         else if (p.role === "Healer") roleCounts.Healer++;
         else roleCounts.Damage++;
+
+        if (p.classId) {
+            classCounts[p.classId] = (classCounts[p.classId] || 0) + 1;
+        }
     });
 
     // 2. Buffs & Utilities
@@ -28,18 +42,18 @@ export function CompReport({ roster }: { roster: Player[] }) {
         });
     });
 
-    // 3. Tier Tokens
-    const tierCounts: Record<TierToken, number> = {
-        [TierToken.Zenith]: 0,
-        [TierToken.Dreadful]: 0,
-        [TierToken.Mystic]: 0,
-        [TierToken.Venerated]: 0,
+    // 3. Armor Types
+    const armorCounts: Record<ArmorType, number> = {
+        [ArmorType.Cloth]: 0,
+        [ArmorType.Leather]: 0,
+        [ArmorType.Mail]: 0,
+        [ArmorType.Plate]: 0,
     };
 
     roster.forEach(p => {
         if (!p.classId) return;
-        const token = CLASS_TIER_TOKENS[p.classId];
-        if (token) tierCounts[token]++;
+        const armor = CLASS_ARMOR_TYPES[p.classId];
+        if (armor) armorCounts[armor]++;
     });
 
     // Define all buffs to show checklist
@@ -65,6 +79,28 @@ export function CompReport({ roster }: { roster: Player[] }) {
                         Total: {roster.length} / 20
                     </div>
                 </div>
+            </div>
+
+            {/* Class Counts Row */}
+            <div className="flex flex-wrap gap-2 pb-2">
+                {WOW_CLASSES.map(wowClass => {
+                    const count = classCounts[wowClass.id] || 0;
+                    return (
+                        <div
+                            key={wowClass.id}
+                            className={cn(
+                                "flex items-center gap-1.5 px-2 py-1 rounded-md border transition-all",
+                                count > 0
+                                    ? "bg-secondary/40 border-secondary-foreground/10 text-foreground"
+                                    : "opacity-20 grayscale border-transparent text-muted-foreground"
+                            )}
+                            title={wowClass.name}
+                        >
+                            <ZamIcon icon={wowClass.icon} size={16} />
+                            <span className="text-xs font-bold leading-none">{count}</span>
+                        </div>
+                    );
+                })}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -109,20 +145,32 @@ export function CompReport({ roster }: { roster: Player[] }) {
                     </div>
                 </div>
 
-                {/* Tier Tokens */}
+                {/* Armor Distribution */}
                 <div className="space-y-2">
-                    <h3 className="text-xs font-bold uppercase text-muted-foreground">Tier Tokens</h3>
+                    <div className="flex items-center gap-1.5">
+                        <h3 className="text-xs font-bold uppercase text-muted-foreground">Armor Types</h3>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Info className="w-3.5 h-3.5 text-muted-foreground/50 cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-50 text-[11px]">
+                                    In Midnight, tier tokens are grouped by armor type.
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </div>
                     <div className="space-y-1">
-                        {Object.values(TierToken).map(token => (
-                            <div key={token} className="text-xs">
+                        {Object.values(ArmorType).map(armor => (
+                            <div key={armor} className="text-xs">
                                 <div className="flex justify-between mb-0.5">
-                                    <span>{token.split(' ')[0]}</span>
-                                    <span className="font-mono">{tierCounts[token]}</span>
+                                    <span>{armor}</span>
+                                    <span className="font-mono">{armorCounts[armor]}</span>
                                 </div>
                                 <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
                                     <div
                                         className="h-full bg-indigo-500 transition-all"
-                                        style={{ width: `${(tierCounts[token] / Math.max(1, roster.length)) * 100}%` }}
+                                        style={{ width: `${(armorCounts[armor] / Math.max(1, roster.length)) * 100}%` }}
                                     />
                                 </div>
                             </div>

@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import InvolvementStep from "./steps/InvolvementStep";
 import AvailabilityStep from "./steps/AvailabilityStep";
 import ClassRankingStep from "./steps/ClassRankingStep";
+import ProfessionsStep from "./steps/ProfessionsStep";
 import ReviewStep from "./steps/ReviewStep";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -43,11 +44,11 @@ export default function SurveyPage() {
                     <motion.div
                         className="h-full bg-indigo-500"
                         initial={{ width: 0 }}
-                        animate={{ width: `${(step / 4) * 100}%` }}
+                        animate={{ width: `${(step / 5) * 100}%` }}
                         transition={{ duration: 0.5 }}
                     />
                 </div>
-                <p className="text-right text-xs text-muted-foreground mt-2">Step {step} of 4</p>
+                <p className="text-right text-xs text-muted-foreground mt-2">Step {step} of 5</p>
             </div>
 
             <AnimatePresence mode="wait">
@@ -62,7 +63,8 @@ export default function SurveyPage() {
                     {step === 1 && <InvolvementStep />}
                     {step === 2 && <AvailabilityStep />}
                     {step === 3 && <ClassRankingStep />}
-                    {step === 4 && <ReviewStep />}
+                    {step === 4 && <ProfessionsStep />}
+                    {step === 5 && <ReviewStep />}
                 </motion.div>
             </AnimatePresence>
         </main>

@@ -35,6 +35,7 @@ export async function GET() {
             availability: existing.availability,
             rankedClasses,
             specSentiments,
+            professions: existing.professions || [],
             comments: existing.comments
         });
     } catch (error) {
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
 
     try {
         const body = await req.json();
-        const { involvement, availability, rankedClasses, specSentiments, comments } = body;
+        const { involvement, availability, rankedClasses, specSentiments, professions, comments } = body;
 
         // Basic validation
         if (!involvement) {
@@ -82,6 +83,7 @@ export async function POST(req: Request) {
                     involvement,
                     availability,
                     specs: specsData,
+                    professions,
                     comments,
                     createdAt: new Date(),
                 })
@@ -92,6 +94,7 @@ export async function POST(req: Request) {
                 involvement,
                 availability,
                 specs: specsData,
+                professions,
                 comments,
             });
         }

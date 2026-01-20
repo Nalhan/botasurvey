@@ -35,7 +35,8 @@ export const WOW_CLASSES: WowClass[] = [
         icon: "classicon_demonhunter",
         specs: [
             { id: "havoc", name: "Havoc", icon: "ability_demonhunter_specdps", role: 'Damage', mainStat: 'other', melee: true },
-            { id: "vengeance", name: "Vengeance", icon: "ability_demonhunter_spectank", role: 'Tank', mainStat: 'other', melee: true, displayName: 'VDH' }
+            { id: "vengeance", name: "Vengeance", icon: "ability_demonhunter_spectank", role: 'Tank', mainStat: 'other', melee: true, displayName: 'VDH' },
+            { id: "devourer", name: "Devourer", icon: "classicon_demonhunter_void", role: 'Damage', mainStat: 'intellect', melee: false }
         ]
     },
     {

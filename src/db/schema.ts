@@ -61,6 +61,15 @@ export const submissions = sqliteTable('submissions', {
   involvement: text('involvement').notNull(), // 'core', 'fill', 'heroic'
   availability: text('availability', { mode: 'json' }).notNull(), // JSON: { timezone: "EST", schedule: { ... } }
   specs: text('specs', { mode: 'json' }).notNull(), // JSON: [{ class: "Mage", specs: { fire: "like" } }]
+  professions: text('professions', { mode: 'json' }), // JSON: [{ id: "alchemy", specId: "potions" }]
   comments: text('comments'),
   createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+});
+
+export const raidCompositions = sqliteTable('raid_compositions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull().default('Default Roster'),
+  rosterData: text('roster_data', { mode: 'json' }).notNull(), // JSON: Player[]
+  playerOverrides: text('player_overrides', { mode: 'json' }).$type<Record<string, any>>().default({}), // JSON: Record<string, Partial<Player>>
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 });
