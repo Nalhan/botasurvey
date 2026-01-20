@@ -20,11 +20,11 @@ export default async function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 relative overflow-hidden">
       {/* Background Ambience */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-900/20 via-background to-background -z-10" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,var(--tw-gradient-stops))] from-indigo-900/20 via-background to-background -z-10" />
 
       <div className="max-w-md w-full space-y-8 text-center animate-in fade-in zoom-in duration-500">
         <div className="space-y-2">
-          <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent pb-1 leading-tight">
+          <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl bg-linear-to-r from-indigo-500 to-yellow-300 bg-clip-text text-transparent pb-1 leading-tight">
             IronBota Survey Midnight Season 1
           </h1>
           <p className="text-muted-foreground">
