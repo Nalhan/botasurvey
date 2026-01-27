@@ -13,7 +13,8 @@ export async function GET() {
 
         return NextResponse.json({
             roster: comps[0].rosterData,
-            overrides: comps[0].playerOverrides || {}
+            overrides: comps[0].playerOverrides || {},
+            roleMappings: comps[0].roleMappings || {}
         });
     } catch (error) {
         console.error('Failed to fetch raid comp:', error);
@@ -24,7 +25,7 @@ export async function GET() {
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        const { roster, overrides } = body;
+        const { roster, overrides, roleMappings } = body;
 
         const existing = await db.select().from(raidCompositions).where(eq(raidCompositions.id, 1));
 
@@ -34,6 +35,7 @@ export async function POST(req: Request) {
                 name: 'Main Roster',
                 rosterData: roster,
                 playerOverrides: overrides || {},
+                roleMappings: roleMappings || {},
                 updatedAt: new Date()
             });
         } else {
@@ -41,6 +43,7 @@ export async function POST(req: Request) {
                 .set({
                     rosterData: roster,
                     playerOverrides: overrides || {},
+                    roleMappings: roleMappings || {},
                     updatedAt: new Date()
                 })
                 .where(eq(raidCompositions.id, 1));

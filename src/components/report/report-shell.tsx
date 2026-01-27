@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { CompReport } from "./comp-report";
 import { ProfessionsReport } from "./professions-report";
 import { PlayerInfoPanel } from "./player-info-panel";
+import { AvailabilityHeatmap } from "./availability-heatmap";
 import { WowClass, WOW_CLASSES } from "@/lib/wow-classes";
 import { InferSelectModel } from "drizzle-orm";
 import { submissions } from "@/db/schema";
@@ -29,17 +30,22 @@ export type Player = {
     rankedClasses: string[]; // List of class IDs in preference order
     specs: any[]; // Full spec data from submission
     professions: any[]; // Profession selection data
+    discordData?: {
+        isInGuild: boolean;
+        nickname: string | null;
+        roles: string[];
+    };
 };
 
 export function ReportShell({ initialData }: { initialData: any[] }) {
     // Transform initial data into Player objects
-    const allPlayers: Player[] = initialData.map(({ submission, user }) => {
+    const allPlayers: Player[] = initialData.map(({ submission, user, discordData }) => {
         const specs = submission.specs as any[];
         const rankedClasses = specs.sort((a, b) => a.rank - b.rank).map(s => s.classId);
 
         return {
             id: submission.id,
-            name: user?.name || "Unknown",
+            name: discordData?.nickname || user?.name || "Unknown",
             userId: user?.id,
             avatar: user?.image,
             classId: rankedClasses[0], // Default to top choice
@@ -49,7 +55,8 @@ export function ReportShell({ initialData }: { initialData: any[] }) {
             availability: submission.availability,
             rankedClasses,
             specs,
-            professions: submission.professions as any[] || []
+            professions: submission.professions as any[] || [],
+            discordData
         };
     });
 
@@ -58,7 +65,7 @@ export function ReportShell({ initialData }: { initialData: any[] }) {
     const [activeId, setActiveId] = useState<string | null>(null);
     const [infoPlayer, setInfoPlayer] = useState<Player | null>(null);
     const [mounted, setMounted] = useState(false);
-    const [activeTab, setActiveTab] = useState<'roster' | 'professions'>('roster');
+    const [activeTab, setActiveTab] = useState<'roster' | 'professions' | 'heatmap'>('roster');
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -276,6 +283,15 @@ export function ReportShell({ initialData }: { initialData: any[] }) {
                         >
                             Professions
                         </button>
+                        <button
+                            onClick={() => setActiveTab('heatmap')}
+                            className={cn(
+                                "text-sm font-medium pb-2 border-b-2 transition-colors",
+                                activeTab === 'heatmap' ? "border-indigo-500 text-indigo-500" : "border-transparent text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            Availability Heatmap
+                        </button>
                     </div>
 
                     <div className="flex flex-col gap-6 relative">
@@ -304,8 +320,10 @@ export function ReportShell({ initialData }: { initialData: any[] }) {
                                     onOpenInfo={setInfoPlayer}
                                 />
                             </>
-                        ) : (
+                        ) : activeTab === 'professions' ? (
                             <ProfessionsReport roster={allPlayers} />
+                        ) : (
+                            <AvailabilityHeatmap players={allPlayers} />
                         )}
                     </div>
                 </div>

@@ -2,6 +2,7 @@
 
 import { Player } from "./report-shell";
 import { WOW_PROFESSIONS } from "@/lib/wow-professions";
+import { WOW_CLASSES } from "@/lib/wow-classes";
 import { ZamIcon } from "@/components/ui/zam-icon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -41,7 +42,7 @@ export function ProfessionsReport({ roster }: { roster: Player[] }) {
                         <ZamIcon icon={prof.icon} size={32} />
                         <div className="flex flex-col">
                             <CardTitle className="text-lg">{prof.name}</CardTitle>
-                            <span className="text-sm text-muted-foreground">{prof.count} players</span>
+                            <span className="text-sm text-muted-foreground">{prof.count} people</span>
                         </div>
                     </CardHeader>
                     <CardContent>
@@ -67,11 +68,23 @@ export function ProfessionsReport({ roster }: { roster: Player[] }) {
                                             <Progress value={percentage} className="h-1" />
                                             {specCount > 0 && (
                                                 <div className="flex flex-wrap gap-1">
-                                                    {specPlayers.map(p => (
-                                                        <div key={p.id} className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary truncate max-w-25" title={p.name}>
-                                                            {p.name}
-                                                        </div>
-                                                    ))}
+                                                    {specPlayers.map(p => {
+                                                        const playerClass = WOW_CLASSES.find(c => c.id === p.classId);
+                                                        const playerSpec = playerClass?.specs.find(s => s.id === p.specId);
+
+                                                        return (
+                                                            <div key={p.id} className="flex items-center gap-1 text-[10px] pl-1 pr-2 py-0.5 rounded-full bg-secondary/80 border border-border/50 truncate max-w-28" title={p.name}>
+                                                                <div className="w-3.5 h-3.5 rounded-sm overflow-hidden shrink-0 bg-background/50 border border-black/10">
+                                                                    {p.avatar ? (
+                                                                        <img src={p.avatar} alt={p.name} className="w-full h-full object-cover" />
+                                                                    ) : (
+                                                                        <ZamIcon icon={playerSpec?.icon || playerClass?.icon || ""} size={14} className="border-0 rounded-none shadow-none" />
+                                                                    )}
+                                                                </div>
+                                                                <span className="truncate">{p.name}</span>
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             )}
                                         </div>

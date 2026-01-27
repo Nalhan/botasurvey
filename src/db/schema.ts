@@ -71,5 +71,6 @@ export const raidCompositions = sqliteTable('raid_compositions', {
   name: text('name').notNull().default('Default Roster'),
   rosterData: text('roster_data', { mode: 'json' }).notNull(), // JSON: Player[]
   playerOverrides: text('player_overrides', { mode: 'json' }).$type<Record<string, any>>().default({}), // JSON: Record<string, Partial<Player>>
+  roleMappings: text('role_mappings', { mode: 'json' }).$type<Record<string, string>>().default({}), // JSON: Record<string, roleId>
   updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
 });

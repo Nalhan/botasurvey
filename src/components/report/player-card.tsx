@@ -4,7 +4,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { Player } from "./report-shell";
 import { cn } from "@/lib/utils";
 import { WOW_CLASSES } from "@/lib/wow-classes";
-import { GripVertical, Info, X, ChevronDown, Smile, Meh, Frown } from "lucide-react";
+import { GripVertical, Info, X, ChevronDown, Smile, Meh, Frown, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ZamIcon } from "@/components/ui/zam-icon";
 import { RoleIcon } from "@/components/ui/role-icon";
@@ -89,7 +89,21 @@ export function PlayerCard({ player, onUpdate, onRemove, onOpenInfo }: PlayerCar
 
 
                 <div className="min-w-0 flex-1">
-                    <div className="font-bold text-sm leading-tight truncate">{player.name}</div>
+                    <div className="font-bold text-sm leading-tight truncate flex items-center gap-1">
+                        {player.name}
+                        {player.discordData && !player.discordData.isInGuild && (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <TriangleAlert size={12} className="text-rose-500 shrink-0 cursor-help" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>User is not in the Discord server</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
+                    </div>
                     <div className="text-[10px] text-muted-foreground uppercase flex items-center gap-1.5 truncate">
                         <span>{player.involvement}</span>
                         <span className="text-primary/60">• {selectedClass?.name}</span>
