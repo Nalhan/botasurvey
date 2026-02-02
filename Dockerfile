@@ -29,6 +29,9 @@ RUN npm run build
 FROM base AS runner
 WORKDIR /app
 
+# Install sqlite3 for potential debugging/manual migration check
+RUN apk add --no-cache sqlite
+
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
