@@ -15,16 +15,18 @@ This project is configured to run as a Docker container using Docker Compose.
     cd botasurvey
     ```
 
-2.  **Environment Variables:**
-    Create a `.env.local` file in the root directory and fill in the required variables (refer to `.env.example` if available).
+2.  **Prepare the Environment:**
+    - Create a `.env.local` file from the example.
+    - Create a `data` directory for the database.
     ```bash
     cp .env.example .env.local
+    mkdir data
     ```
 
 3.  **Build and Run:**
     Use Docker Compose to build and start the application.
     ```bash
-    docker-compose up -d --build
+    docker-compose -f docker-compose-example.yml up -d --build
     ```
 
 4.  **Access the Application:**
@@ -32,7 +34,7 @@ This project is configured to run as a Docker container using Docker Compose.
 
 ## Database Persistence
 
-The SQLite database (`db.sqlite`) is mounted as a volume in the Docker container. This ensures that your data persists even if the container is stopped or removed.
+The application uses a SQLite database located in the `data` directory. The `docker-compose-example.yml` is configured to mount this directory as a volume (`./data:/app/data`), ensuring that your data persists even when containers are recreated.
 
 ## Troubleshooting
 

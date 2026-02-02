@@ -4,7 +4,8 @@ import Database from 'better-sqlite3';
 import * as schema from './schema';
 import path from 'path';
 
-const sqlite = new Database('db.sqlite');
+const dbPath = process.env.DATABASE_PATH || 'db.sqlite';
+const sqlite = new Database(dbPath);
 export const db = drizzle(sqlite, { schema });
 
 // Run migrations on startup
