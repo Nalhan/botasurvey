@@ -2,22 +2,19 @@
 
 import { cn } from "@/lib/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BASE_RAID_SESSIONS, RaidSession } from "@/lib/time";
+import { BASE_RAID_SESSIONS } from "@/lib/time";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-const UTC_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const HOURS = Array.from({ length: 24 }, (_, i) => i);
-const HALVES = ["00", "30"];
+export const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 // Generate all time slots starting from 12:00 (Noon)
-const TIME_SLOTS = [
+export const TIME_SLOTS = [
     ...Array.from({ length: 12 }, (_, i) => i + 12).flatMap(h => [`${h.toString().padStart(2, '0')}:00`, `${h.toString().padStart(2, '0')}:30`]),
     ...Array.from({ length: 12 }, (_, i) => i).flatMap(h => [`${h.toString().padStart(2, '0')}:00`, `${h.toString().padStart(2, '0')}:30`])
 ];
 
-const getActualDay = (displayDay: string, time: string) => {
+export const getActualDay = (displayDay: string, time: string) => {
     const hour = parseInt(time.split(':')[0]);
     if (hour < 12) {
         const index = DAYS.indexOf(displayDay);
@@ -27,14 +24,37 @@ const getActualDay = (displayDay: string, time: string) => {
 };
 
 interface ScheduleGridProps {
-    value: Record<string, string[]>;
-    onChange: (value: Record<string, string[]>) => void;
+    value?: Record<string, string[]>;
+    onChange?: (value: Record<string, string[]>) => void;
     timezone: string;
     className?: string;
     readOnly?: boolean;
+    renderCell?: (props: {
+        day: string;
+        time: string;
+        actualDay: string;
+        timeLabel: string;
+        isRaid: boolean;
+        isMidnight: boolean;
+        isHourStart: boolean;
+        localToUtc: Record<string, { day: string, time: string }>;
+    }) => React.ReactNode;
+    renderLegend?: () => React.ReactNode;
+    title?: string;
+    subtitle?: string;
 }
 
-export function ScheduleGrid({ value, onChange, timezone, className, readOnly }: ScheduleGridProps) {
+export function ScheduleGrid({
+    value = {},
+    onChange,
+    timezone,
+    className,
+    readOnly,
+    renderCell,
+    renderLegend,
+    title = "Availability Grid",
+    subtitle
+}: ScheduleGridProps) {
     const [isMouseDown, setIsMouseDown] = useState(false);
     const [action, setAction] = useState<'add' | 'remove'>('add');
     const gridRef = useRef<HTMLDivElement>(null);
@@ -51,8 +71,6 @@ export function ScheduleGrid({ value, onChange, timezone, className, readOnly }:
         const raidSet = new Set<string>();
 
         // Iterate UTC week (start somewhat before to account for shifts)
-        // Jan 1 2024 is Monday.
-        // We iterate from Dec 31 2023 to Jan 8 2024 to cover offsets
         const start = new Date("2023-12-31T00:00:00Z");
 
         const formatter = new Intl.DateTimeFormat("en-US", {
@@ -96,8 +114,11 @@ export function ScheduleGrid({ value, onChange, timezone, className, readOnly }:
                         const [sH, sM] = session.startTime.split(':').map(Number);
                         const [eH, eM] = session.endTime.split(':').map(Number);
                         const startMin = sH * 60 + sM;
-                        let endMin = eH * 60 + eM;
-
+                        const endMin = eH * 60 + eM;
+                        // Simple check, assumes sessions don't wrap heavily or weirdly (e.g. 23:30->01:30 is handled by next day logic usually, but here we iterate linearly)
+                        // Actually, BASE_RAID_SESSIONS are relative to UTC day.
+                        // If it wraps, we need to care... but usually it doesn't cross midnight UTC for US/EU times unless specifically set.
+                        // Actually, our BASE_RAID_SESSIONS hardcode simple ranges.
                         if (t >= startMin && t < endMin) {
                             if (DAYS.includes(localDay)) {
                                 raidSet.add(localKey);
@@ -134,7 +155,7 @@ export function ScheduleGrid({ value, onChange, timezone, className, readOnly }:
     }, [value, localToUtc]);
 
     const handleInteract = (displayDay: string, time: string, forceAction?: 'add' | 'remove') => {
-        if (readOnly) return;
+        if (readOnly || !onChange) return;
         const actualDay = getActualDay(displayDay, time);
         const utc = localToUtc[`${actualDay}-${time}`];
         if (!utc) return;
@@ -248,8 +269,8 @@ export function ScheduleGrid({ value, onChange, timezone, className, readOnly }:
 
     const [is24Hour, setIs24Hour] = useState(false);
 
-    const formatTimeLabel = (time: string) => {
-        if (is24Hour) return time;
+    const formatTimeLabel = (time: string, format24: boolean) => {
+        if (format24) return time;
         const [h, m] = time.split(':').map(Number);
         const ampm = h >= 12 ? 'PM' : 'AM';
         const h12 = h % 12 || 12;
@@ -266,8 +287,8 @@ export function ScheduleGrid({ value, onChange, timezone, className, readOnly }:
                         </svg>
                     </div>
                     <div>
-                        <h3 className="font-bold text-sm text-foreground">Availability Grid</h3>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Local: {timezone}</p>
+                        <h3 className="font-bold text-sm text-foreground">{title}</h3>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Local: {timezone}{subtitle ? ` • ${subtitle}` : ''}</p>
                     </div>
                 </div>
                 <button
@@ -291,7 +312,7 @@ export function ScheduleGrid({ value, onChange, timezone, className, readOnly }:
                                         {isHourStart && (
                                             <div className="absolute left-0 bottom-0 flex flex-col items-start translate-x-[-0.5px]">
                                                 <span className="text-[9px] font-bold text-muted-foreground whitespace-nowrap -rotate-45 origin-bottom-left ml-[2px] mb-[2px]">
-                                                    {formatTimeLabel(time)}
+                                                    {formatTimeLabel(time, is24Hour)}
                                                 </span>
                                                 <div className="w-px h-2 bg-border/80" />
                                             </div>
@@ -320,6 +341,19 @@ export function ScheduleGrid({ value, onChange, timezone, className, readOnly }:
                                         const isRaid = raidSlots.has(`${actualDay}-${time}`);
                                         const isHourStart = time.endsWith("00");
                                         const isMidnight = time === "00:00";
+
+                                        if (renderCell) {
+                                            return renderCell({
+                                                day,
+                                                time,
+                                                actualDay,
+                                                timeLabel: formatTimeLabel(time, is24Hour),
+                                                isRaid,
+                                                isMidnight,
+                                                isHourStart,
+                                                localToUtc
+                                            });
+                                        }
 
                                         return (
                                             <div
@@ -410,18 +444,22 @@ export function ScheduleGrid({ value, onChange, timezone, className, readOnly }:
             </div>
 
             <div className="p-3 border-t bg-secondary/10 flex gap-4 text-[10px] items-center justify-center">
-                <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 bg-indigo-500 rounded-sm shadow-sm" />
-                    <span className="text-muted-foreground font-medium">Available</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 bg-emerald-500 rounded-sm shadow-sm" />
-                    <span className="text-muted-foreground font-medium">Raid Available</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                    <div className="w-3 h-3 bg-rose-500/20 border border-rose-500/30 rounded-sm" />
-                    <span className="text-muted-foreground font-medium">Raid Time</span>
-                </div>
+                {renderLegend ? renderLegend() : (
+                    <>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 bg-indigo-500 rounded-sm shadow-sm" />
+                            <span className="text-muted-foreground font-medium">Available</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 bg-emerald-500 rounded-sm shadow-sm" />
+                            <span className="text-muted-foreground font-medium">Raid Available</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 bg-rose-500/20 border border-rose-500/30 rounded-sm" />
+                            <span className="text-muted-foreground font-medium">Raid Time</span>
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );

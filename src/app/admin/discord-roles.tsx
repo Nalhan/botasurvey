@@ -64,6 +64,23 @@ export function DiscordRoles({ data, roles, roster, initialRoleMappings }: Disco
             if (action === 'add') newRoles.add(roleId);
             else newRoles.delete(roleId);
 
+            // Check if final set matches live exactly. If so, drop the stage.
+            const liveSet = new Set(existingRoles);
+            let isSame = newRoles.size === liveSet.size;
+            if (isSame) {
+                for (const r of newRoles) {
+                    if (!liveSet.has(r)) {
+                        isSame = false;
+                        break;
+                    }
+                }
+            }
+
+            if (isSame) {
+                const { [userId]: _, ...rest } = prev;
+                return rest;
+            }
+
             return {
                 ...prev,
                 [userId]: { ...current, roles: newRoles }
@@ -335,9 +352,15 @@ export function DiscordRoles({ data, roles, roster, initialRoleMappings }: Disco
                                                     {removedRoles.map(rid => {
                                                         const r = roles.find(role => role.id === rid);
                                                         return r ? (
-                                                            <Badge key={rid} className="text-[10px] px-2 py-0 h-5 bg-red-500/10 text-red-500 border-red-500/20 line-through opacity-70">
-                                                                {r.name}
-                                                            </Badge>
+                                                            <div
+                                                                key={rid}
+                                                                className="group relative flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold transition-all duration-300 hover:pr-5 cursor-default bg-red-500/10 text-red-500 border-red-500/20 overflow-hidden whitespace-nowrap opacity-70"
+                                                            >
+                                                                <span className="line-through">{r.name}</span>
+                                                                <button onClick={() => handleStageRole(user.discordId!, rid, 'add')} className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 hover:text-red-400 flex items-center justify-center">
+                                                                    <Undo className="w-3 h-3" />
+                                                                </button>
+                                                            </div>
                                                         ) : null;
                                                     })}
                                                     {addedRoles.map(rid => {
