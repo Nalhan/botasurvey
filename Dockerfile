@@ -32,13 +32,13 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN addgroup --system --gid 1000 nodejs
+RUN adduser --system --uid 1000 nextjs
 
 COPY --from=builder /app/public ./public
 
-RUN mkdir .next
-RUN mkdir data
+# Set the correct permission for prerender cache and data
+RUN mkdir -p .next data
 RUN chown -R nextjs:nodejs .next data
 
 # Automatically leverage output traces to reduce image size
@@ -47,9 +47,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # We don't copy db.sqlite here to avoid conflicts with volume mounts.
 # The app will create it in the 'data' folder if it doesn't exist.
-# Copy drizzle folder for migrations if needed? Or just rely on push having run? 
-# For SQLite, the schema is in the DB file. So if we mount the DB, we are good.
-# Ideally, we run migrations on startup. But for simple file-based SQLite, copying or mounting is key.
 
 USER nextjs
 
