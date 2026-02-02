@@ -44,3 +44,4 @@ next-env.d.ts
 cloudflared
 
 db.sqlite
+docker-compose.yml

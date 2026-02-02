@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+.env
+.env.local
+db.sqlite
+Dockerfile
+docker-compose.yml
+DOCKER.md
+README.md
+*.sqlite-journal

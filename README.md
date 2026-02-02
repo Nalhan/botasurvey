@@ -2,7 +2,9 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+For Docker setup, please refer to [DOCKER.md](file:///workspaces/botasurvey/DOCKER.md).
+
+For local development without Docker, run the development server:
 
 ```bash
 npm run dev

@@ -1,0 +1,17 @@
+services:
+  botasurvey:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: botasurvey
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./db.sqlite:/app/db.sqlite
+    env_file:
+      - .env.local
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=db.sqlite
+      - HOSTNAME=0.0.0.0
