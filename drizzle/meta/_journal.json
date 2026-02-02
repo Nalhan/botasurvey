@@ -8,6 +8,13 @@
       "when": 1768885195103,
       "tag": "0000_initial_professions",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1769999993087,
+      "tag": "0001_add_raid_compositions",
+      "breakpoints": true
     }
   ]
 }
