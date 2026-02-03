@@ -30,6 +30,7 @@ export type Player = {
     rankedClasses: string[]; // List of class IDs in preference order
     specs: any[]; // Full spec data from submission
     professions: any[]; // Profession selection data
+    comments?: string | null;
     discordData?: {
         isInGuild: boolean;
         nickname: string | null;
@@ -56,6 +57,7 @@ export function ReportShell({ initialData }: { initialData: any[] }) {
             rankedClasses,
             specs,
             professions: submission.professions as any[] || [],
+            comments: submission.comments,
             discordData
         };
     });
