@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BASE_RAID_SESSIONS } from "@/lib/time";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -42,6 +42,7 @@ interface ScheduleGridProps {
     renderLegend?: () => React.ReactNode;
     title?: string;
     subtitle?: string;
+    disableScroll?: boolean;
 }
 
 export function ScheduleGrid({
@@ -53,7 +54,8 @@ export function ScheduleGrid({
     renderCell,
     renderLegend,
     title = "Availability Grid",
-    subtitle
+    subtitle,
+    disableScroll = false
 }: ScheduleGridProps) {
     const [isMouseDown, setIsMouseDown] = useState(false);
     const [action, setAction] = useState<'add' | 'remove'>('add');
@@ -61,12 +63,7 @@ export function ScheduleGrid({
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     // Pre-calculate the mapping from [LocalDay][LocalTime] -> { day: UTCDay, time: UTCTime }
-    const [localToUtc, setLocalToUtc] = useState<Record<string, { day: string, time: string }>>({});
-    const [raidSlots, setRaidSlots] = useState<Set<string>>(new Set());
-    const [raidColumns, setRaidColumns] = useState<Set<number>>(new Set());
-    const [raidOffscreen, setRaidOffscreen] = useState<{ left: boolean; right: boolean }>({ left: false, right: false });
-
-    useEffect(() => {
+    const { localToUtc, raidSlots, raidColumns } = useMemo(() => {
         const map: Record<string, { day: string, time: string }> = {};
         const raidSet = new Set<string>();
 
@@ -115,10 +112,6 @@ export function ScheduleGrid({
                         const [eH, eM] = session.endTime.split(':').map(Number);
                         const startMin = sH * 60 + sM;
                         const endMin = eH * 60 + eM;
-                        // Simple check, assumes sessions don't wrap heavily or weirdly (e.g. 23:30->01:30 is handled by next day logic usually, but here we iterate linearly)
-                        // Actually, BASE_RAID_SESSIONS are relative to UTC day.
-                        // If it wraps, we need to care... but usually it doesn't cross midnight UTC for US/EU times unless specifically set.
-                        // Actually, our BASE_RAID_SESSIONS hardcode simple ranges.
                         if (t >= startMin && t < endMin) {
                             if (DAYS.includes(localDay)) {
                                 raidSet.add(localKey);
@@ -128,9 +121,6 @@ export function ScheduleGrid({
                 }
             }
         }
-
-        setLocalToUtc(map);
-        setRaidSlots(raidSet);
 
         // Calculate raid columns
         const raidCols = new Set<number>();
@@ -142,9 +132,11 @@ export function ScheduleGrid({
                 raidCols.add(index);
             }
         });
-        setRaidColumns(raidCols);
 
+        return { localToUtc: map, raidSlots: raidSet, raidColumns: raidCols };
     }, [timezone]);
+
+    const [raidOffscreen, setRaidOffscreen] = useState<{ left: boolean; right: boolean }>({ left: false, right: false });
 
 
     const isSelected = useCallback((displayDay: string, time: string) => {
@@ -216,7 +208,7 @@ export function ScheduleGrid({
 
         let offLeft = false;
         let offRight = false;
-        const raidIndices = Array.from(raidColumns);
+        const raidIndices = Array.from(raidColumns) as number[];
 
         raidIndices.forEach(index => {
             // Position: padding (16) + labels (100) + gap (1) + index * (slot (32) + gap (1))
@@ -239,6 +231,7 @@ export function ScheduleGrid({
 
         const scrollContainer = scrollContainerRef.current;
         const handleWheel = (e: WheelEvent) => {
+            if (disableScroll) return;
             if (e.deltaY !== 0 && scrollContainer) {
                 // Check if we can actually scroll horizontally
                 const canScrollHorizontally = scrollContainer.scrollWidth > scrollContainer.clientWidth;
@@ -265,7 +258,7 @@ export function ScheduleGrid({
             }
             window.removeEventListener('resize', checkRaidOffscreen);
         };
-    }, [checkRaidOffscreen]);
+    }, [checkRaidOffscreen, disableScroll]);
 
     const [is24Hour, setIs24Hour] = useState(false);
 
@@ -391,56 +384,58 @@ export function ScheduleGrid({
                 </div>
 
                 {/* Scroll Hints */}
-                <AnimatePresence>
-                    {raidOffscreen.left && (
-                        <motion.div
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -10 }}
-                            className="absolute left-0 top-15 bottom-4 z-20 pointer-events-none flex items-center"
-                        >
-                            <button
-                                onClick={() => {
-                                    const container = scrollContainerRef.current;
-                                    if (container) {
-                                        const raidIndices = Array.from(raidColumns).sort((a, b) => a - b);
-                                        const firstRaidIndex = raidIndices[0];
-                                        const targetScroll = 16 + 100 + 1 + firstRaidIndex * 33 - 150;
-                                        container.scrollTo({ left: targetScroll, behavior: 'smooth' });
-                                    }
-                                }}
-                                className="pointer-events-auto bg-rose-500 text-white text-[10px] font-bold py-4 px-1 rounded-r-xl shadow-2xl shadow-rose-500/40 border border-l-0 border-white/20 flex flex-col items-center gap-2 hover:bg-rose-400 transition-colors group/hint"
+                {!disableScroll && (
+                    <AnimatePresence>
+                        {raidOffscreen.left && (
+                            <motion.div
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -10 }}
+                                className="absolute left-0 top-15 bottom-4 z-20 pointer-events-none flex items-center"
                             >
-                                <ChevronLeft className="w-3 h-3 group-hover/hint:-translate-x-0.5 transition-transform" />
-                                <span className="[writing-mode:vertical-lr] rotate-180 uppercase tracking-widest font-black text-[8px]">Raid</span>
-                            </button>
-                        </motion.div>
-                    )}
-                    {raidOffscreen.right && (
-                        <motion.div
-                            initial={{ opacity: 0, x: 10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 10 }}
-                            className="absolute right-0 top-15 bottom-4 z-20 pointer-events-none flex items-center"
-                        >
-                            <button
-                                onClick={() => {
-                                    const container = scrollContainerRef.current;
-                                    if (container) {
-                                        const raidIndices = Array.from(raidColumns).sort((a, b) => b - a);
-                                        const lastRaidIndex = raidIndices[0];
-                                        const targetScroll = 16 + 100 + 1 + lastRaidIndex * 33 - (container.clientWidth - 150);
-                                        container.scrollTo({ left: targetScroll, behavior: 'smooth' });
-                                    }
-                                }}
-                                className="pointer-events-auto bg-rose-500 text-white text-[10px] font-bold py-4 px-1 rounded-l-xl shadow-2xl shadow-rose-500/40 border border-r-0 border-white/20 flex flex-col items-center gap-2 hover:bg-rose-400 transition-colors group/hint"
+                                <button
+                                    onClick={() => {
+                                        const container = scrollContainerRef.current;
+                                        if (container) {
+                                            const raidIndices = (Array.from(raidColumns) as number[]).sort((a, b) => a - b);
+                                            const firstRaidIndex = raidIndices[0];
+                                            const targetScroll = 16 + 100 + 1 + firstRaidIndex * 33 - 150;
+                                            container.scrollTo({ left: targetScroll, behavior: 'smooth' });
+                                        }
+                                    }}
+                                    className="pointer-events-auto bg-rose-500 text-white text-[10px] font-bold py-4 px-1 rounded-r-xl shadow-2xl shadow-rose-500/40 border border-l-0 border-white/20 flex flex-col items-center gap-2 hover:bg-rose-400 transition-colors group/hint"
+                                >
+                                    <ChevronLeft className="w-3 h-3 group-hover/hint:-translate-x-0.5 transition-transform" />
+                                    <span className="[writing-mode:vertical-lr] rotate-180 uppercase tracking-widest font-black text-[8px]">Raid</span>
+                                </button>
+                            </motion.div>
+                        )}
+                        {raidOffscreen.right && (
+                            <motion.div
+                                initial={{ opacity: 0, x: 10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: 10 }}
+                                className="absolute right-0 top-15 bottom-4 z-20 pointer-events-none flex items-center"
                             >
-                                <ChevronRight className="w-3 h-3 group-hover/hint:translate-x-0.5 transition-transform" />
-                                <span className="[writing-mode:vertical-lr] uppercase tracking-widest font-black text-[8px]">Raid</span>
-                            </button>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                                <button
+                                    onClick={() => {
+                                        const container = scrollContainerRef.current;
+                                        if (container) {
+                                            const raidIndices = (Array.from(raidColumns) as number[]).sort((a, b) => b - a);
+                                            const lastRaidIndex = raidIndices[0];
+                                            const targetScroll = 16 + 100 + 1 + lastRaidIndex * 33 - (container.clientWidth - 150);
+                                            container.scrollTo({ left: targetScroll, behavior: 'smooth' });
+                                        }
+                                    }}
+                                    className="pointer-events-auto bg-rose-500 text-white text-[10px] font-bold py-4 px-1 rounded-l-xl shadow-2xl shadow-rose-500/40 border border-r-0 border-white/20 flex flex-col items-center gap-2 hover:bg-rose-400 transition-colors group/hint"
+                                >
+                                    <ChevronRight className="w-3 h-3 group-hover/hint:translate-x-0.5 transition-transform" />
+                                    <span className="[writing-mode:vertical-lr] uppercase tracking-widest font-black text-[8px]">Raid</span>
+                                </button>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                )}
             </div>
 
             <div className="p-3 border-t bg-secondary/10 flex gap-4 text-[10px] items-center justify-center">

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Player } from "./report-shell";
 import { X, Calendar, Trophy, MessageSquare, Smile, Meh, Frown, Hammer } from "lucide-react";
 import { WOW_CLASSES } from "@/lib/wow-classes";
@@ -19,9 +20,9 @@ export function PlayerInfoPanel({ player, onClose }: { player: Player, onClose: 
                 {/* Header */}
                 <div className="p-6 border-b flex items-center justify-between bg-muted/30">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary/20">
+                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary/20 relative">
                             {player.avatar ? (
-                                <img src={player.avatar} alt={player.name} className="w-full h-full object-cover" />
+                                <Image src={player.avatar} alt={player.name} fill className="object-cover" />
                             ) : (
                                 <div className="w-full h-full bg-secondary flex items-center justify-center font-bold text-xl uppercase">
                                     {player.name[0]}
@@ -126,6 +127,7 @@ export function PlayerInfoPanel({ player, onClose }: { player: Player, onClose: 
                                 onChange={() => { }}
                                 timezone={player.availability.timezone}
                                 readOnly={true}
+                                disableScroll={true}
                             />
                         </div>
                     </section>

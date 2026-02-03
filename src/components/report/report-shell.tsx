@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { DndContext, DragOverlay, DragStartEvent, DragEndEvent, useSensor, useSensors, PointerSensor } from "@dnd-kit/core";
 import { RosterSidebar } from "./roster-sidebar";
 import { CompBuilder } from "./comp-builder";
@@ -234,7 +235,7 @@ export function ReportShell({ initialData }: { initialData: any[] }) {
 
     if (!mounted || isInitialLoad) {
         return (
-            <div className="grid lg:grid-cols-[350px_1fr] gap-6 h-[calc(100vh-100px)]">
+            <div className="grid lg:grid-cols-[350px_1fr] gap-6 h-full">
                 <div className="h-full overflow-hidden flex flex-col bg-card border rounded-lg">
                     <div className="p-4 border-b bg-muted/40 flex items-center justify-between">
                         <div className="h-4 w-32 bg-secondary animate-pulse rounded" />
@@ -255,7 +256,7 @@ export function ReportShell({ initialData }: { initialData: any[] }) {
 
     return (
         <DndContext id="report-dnd" sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-            <div className="grid lg:grid-cols-[350px_1fr] gap-6 h-[calc(100vh-100px)]">
+            <div className="grid lg:grid-cols-[350px_1fr] gap-6 h-full">
                 <div className="h-full overflow-hidden flex flex-col">
                     <RosterSidebar
                         players={availablePlayers}
@@ -342,9 +343,9 @@ export function ReportShell({ initialData }: { initialData: any[] }) {
                         style={{ borderLeft: `4px solid ${WOW_CLASSES.find(c => c.id === activePlayer.classId)?.color || 'transparent'}` }}
                     >
                         <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded shrink-0 overflow-hidden bg-secondary flex items-center justify-center border">
+                            <div className="w-8 h-8 rounded shrink-0 overflow-hidden bg-secondary flex items-center justify-center border relative">
                                 {activePlayer.avatar ? (
-                                    <img src={activePlayer.avatar} alt={activePlayer.name} className="w-full h-full object-cover" />
+                                    <Image src={activePlayer.avatar} alt={activePlayer.name} fill className="object-cover" />
                                 ) : (
                                     <ZamIcon icon={WOW_CLASSES.find(c => c.id === activePlayer.classId)?.specs.find(s => s.id === activePlayer.specId)?.icon || WOW_CLASSES.find(c => c.id === activePlayer.classId)?.icon || ""} size={32} />
                                 )}

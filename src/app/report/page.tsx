@@ -43,31 +43,35 @@ export default async function ReportPage() {
     }));
 
     return (
-        <div className="container mx-auto py-6 px-4 max-w-[1600px]">
-            <div className="mb-6 flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold">Raid Composition Report</h1>
-                    <p className="text-muted-foreground text-sm">Drag players from the sidebar to build your roster.</p>
-                </div>
-                <div className="flex gap-2">
-                    {isUserAdmin && (
-                        <Link href="/admin">
-                            <Button variant="ghost" className="gap-2">
-                                <Shield className="w-4 h-4 text-rose-500" />
-                                Admin Panel
+        <div className="h-screen flex flex-col overflow-hidden">
+            <div className="container mx-auto py-6 px-4 max-w-[1600px] flex-none">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold">Raid Composition Report</h1>
+                        <p className="text-muted-foreground text-sm">Drag players from the sidebar to build your roster.</p>
+                    </div>
+                    <div className="flex gap-2">
+                        {isUserAdmin && (
+                            <Link href="/admin">
+                                <Button variant="ghost" className="gap-2">
+                                    <Shield className="w-4 h-4 text-rose-500" />
+                                    Admin Panel
+                                </Button>
+                            </Link>
+                        )}
+                        <Link href="/">
+                            <Button variant="outline" className="gap-2">
+                                <Home className="w-4 h-4" />
+                                Home
                             </Button>
                         </Link>
-                    )}
-                    <Link href="/">
-                        <Button variant="outline" className="gap-2">
-                            <Home className="w-4 h-4" />
-                            Home
-                        </Button>
-                    </Link>
+                    </div>
                 </div>
             </div>
 
-            <ReportShell initialData={data} />
+            <div className="flex-1 min-h-0 container mx-auto px-4 max-w-[1600px] pb-6">
+                <ReportShell initialData={data} />
+            </div>
         </div>
     );
 }

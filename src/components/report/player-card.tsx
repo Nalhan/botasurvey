@@ -3,6 +3,7 @@
 import { useDraggable } from "@dnd-kit/core";
 import { Player } from "./report-shell";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 import { WOW_CLASSES } from "@/lib/wow-classes";
 import { GripVertical, Info, X, ChevronDown, Smile, Meh, Frown, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -75,9 +76,9 @@ export function PlayerCard({ player, onUpdate, onRemove, onOpenInfo }: PlayerCar
             <div className="flex items-center gap-2">
                 {/* Avatar / Class Icon */}
                 <div className="relative w-8 h-8 rounded shrink-0 bg-secondary flex items-center justify-center text-xs font-bold text-muted-foreground border">
-                    <div className="w-full h-full overflow-hidden rounded-sm">
+                    <div className="w-full h-full overflow-hidden rounded-sm relative">
                         {player.avatar ? (
-                            <img src={player.avatar} alt={player.name} className="w-full h-full object-cover" />
+                            <Image src={player.avatar} alt={player.name} fill className="object-cover" />
                         ) : (
                             <ZamIcon icon={selectedSpec?.icon || selectedClass?.icon || ""} size={32} />
                         )}
@@ -111,7 +112,7 @@ export function PlayerCard({ player, onUpdate, onRemove, onOpenInfo }: PlayerCar
                 </div>
 
                 {/* Availability */}
-                <div onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} className="shrink-0">
+                <div className="shrink-0">
                     <AvailabilityIndicators player={player} />
                 </div>
 
@@ -147,7 +148,7 @@ export function PlayerCard({ player, onUpdate, onRemove, onOpenInfo }: PlayerCar
             </div>
 
             {/* Spec Selection - Sentiment logic moved inside button */}
-            <div onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} className="w-full">
+            <div className="w-full">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm" className="w-full justify-between text-sm font-normal h-10 px-2 shrink min-w-0">

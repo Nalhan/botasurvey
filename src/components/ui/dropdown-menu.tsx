@@ -52,7 +52,11 @@ const DropdownMenuTrigger = ({ children, asChild, ...props }: any) => {
     return (
         <div
             ref={context.triggerRef}
-            onClick={() => context.setOpen(!context.open)}
+            onClick={(e) => {
+                e.stopPropagation();
+                context.setOpen(!context.open);
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
             className="inline-block"
             {...props}
         >
