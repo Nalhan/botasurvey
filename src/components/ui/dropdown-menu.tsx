@@ -66,20 +66,42 @@ const DropdownMenuContent = ({ className, align = "center", children, ...props }
     if (!context) throw new Error("DropdownMenuContent must be used within DropdownMenu");
 
     const [position, setPosition] = React.useState({ top: 0, left: 0, width: 0 });
+    const [side, setSide] = React.useState<"top" | "bottom">("bottom");
 
     React.useLayoutEffect(() => {
         if (context.open && context.triggerRef.current) {
-            const rect = context.triggerRef.current.getBoundingClientRect();
-            const scrollY = window.scrollY;
-            const scrollX = window.scrollX;
+            const updatePosition = () => {
+                if (!context.triggerRef.current) return;
+                const rect = context.triggerRef.current.getBoundingClientRect();
+                const scrollY = window.scrollY;
+                const scrollX = window.scrollX;
+                const viewportHeight = window.innerHeight;
 
-            setPosition({
-                top: rect.bottom + scrollY + 5,
-                left: rect.left + scrollX, // Simplify left align for now
-                width: rect.width
-            });
+                const spaceBelow = viewportHeight - rect.bottom;
+                const spaceAbove = rect.top;
+
+                // Flip to top if space below is less than 350px and there's more space above
+                const shouldFlip = spaceBelow < 350 && spaceAbove > spaceBelow;
+
+                setSide(shouldFlip ? "top" : "bottom");
+                setPosition({
+                    top: shouldFlip ? rect.top + scrollY - 5 : rect.bottom + scrollY + 5,
+                    left: rect.left + scrollX,
+                    width: rect.width
+                });
+            };
+
+            updatePosition();
+            // Use capture phase for scroll to catch internal container scrolling
+            window.addEventListener("scroll", updatePosition, true);
+            window.addEventListener("resize", updatePosition);
+
+            return () => {
+                window.removeEventListener("scroll", updatePosition, true);
+                window.removeEventListener("resize", updatePosition);
+            };
         }
-    }, [context.open]);
+    }, [context.open, context.triggerRef]);
 
     if (!context.open) return null;
 
@@ -90,10 +112,12 @@ const DropdownMenuContent = ({ className, align = "center", children, ...props }
                 position: "absolute",
                 top: position.top,
                 left: position.left,
-                minWidth: position.width
+                minWidth: position.width,
+                transform: side === "top" ? "translateY(-100%)" : "none",
+                transformOrigin: side === "top" ? "bottom left" : "top left",
             }}
             className={cn(
-                "z-50 min-w-32 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
+                "z-50 min-w-32 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95",
                 className
             )}
             {...props}
