@@ -57,3 +57,24 @@ export async function bulkApplyDiscordChanges(changes: DiscordChange[]) {
 
     return { success: true };
 }
+
+export async function deleteUser(userId: string) {
+    const session = await auth();
+    const isUserAdmin = await isAdmin(session);
+
+    if (!isUserAdmin) {
+        return { success: false, error: "Unauthorized" };
+    }
+
+    try {
+        const { db } = await import("@/db");
+        const { users } = await import("@/db/schema");
+        const { eq } = await import("drizzle-orm");
+
+        await db.delete(users).where(eq(users.id, userId));
+        return { success: true };
+    } catch (e) {
+        console.error("Failed to delete user:", e);
+        return { success: false, error: "Failed to delete user" };
+    }
+}

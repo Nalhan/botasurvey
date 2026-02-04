@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { submissions, users, accounts, raidCompositions } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { getGuildRoles, getGuildMember, DiscordRole } from "@/lib/discord";
-import { DiscordRoles } from "./discord-roles";
+import { AdminDashboard } from "./admin-dashboard";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Home, ShieldAlert, ChevronLeft } from "lucide-react";
@@ -102,20 +102,12 @@ export default async function AdminPage() {
             </div>
 
             <div className="space-y-6">
-                <div className="bg-card border rounded-lg p-1">
-                    <div className="flex gap-2 p-2 border-b">
-                        <Button variant="ghost" className="bg-secondary/50 text-foreground">Discord Roles</Button>
-                        <Button variant="ghost" disabled className="opacity-50">Settings (Soon)</Button>
-                    </div>
-                    <div className="p-4">
-                        <DiscordRoles
-                            data={adminData}
-                            roles={guildRoles}
-                            roster={roster as any[]}
-                            initialRoleMappings={roleMappings as Record<string, string>}
-                        />
-                    </div>
-                </div>
+                <AdminDashboard
+                    adminData={adminData}
+                    guildRoles={guildRoles}
+                    roster={roster as any[]}
+                    initialRoleMappings={roleMappings as Record<string, string>}
+                />
             </div>
         </div>
     );
