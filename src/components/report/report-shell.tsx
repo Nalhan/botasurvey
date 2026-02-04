@@ -15,6 +15,7 @@ import { InferSelectModel } from "drizzle-orm";
 import { submissions } from "@/db/schema";
 import { Button } from "@/components/ui/button";
 import { ZamIcon } from "@/components/ui/zam-icon";
+import { formatDiscordAvatar } from "@/lib/avatar";
 
 export type Submission = InferSelectModel<typeof submissions>;
 
@@ -41,7 +42,7 @@ export type Player = {
 
 export function ReportShell({ initialData }: { initialData: any[] }) {
     // Transform initial data into Player objects
-    const allPlayers: Player[] = initialData.map(({ submission, user, discordData }) => {
+    const allPlayers: Player[] = initialData.map(({ submission, user, discordData, discordId }) => {
         const specs = submission.specs as any[];
         const rankedClasses = specs.sort((a, b) => a.rank - b.rank).map(s => s.classId);
 
@@ -49,7 +50,7 @@ export function ReportShell({ initialData }: { initialData: any[] }) {
             id: submission.id,
             name: discordData?.nickname || user?.name || "Unknown",
             userId: user?.id,
-            avatar: user?.image,
+            avatar: discordData?.avatar || (discordId && user?.image ? formatDiscordAvatar(discordId, user.image) : user?.image),
             classId: rankedClasses[0], // Default to top choice
             specId: undefined, // Default to no spec selected
             role: "Damage", // Placeholder, will derive from spec

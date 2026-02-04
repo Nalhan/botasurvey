@@ -1,12 +1,10 @@
 import { REST } from '@discordjs/rest';
 import { Routes, APIGuildMember } from 'discord-api-types/v10';
 import { unstable_cache } from 'next/cache';
+import { formatDiscordAvatar, getDefaultAvatarUrl } from './avatar';
 
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID;
-
-// If we don't have tokens, we'll return mock data or nulls to avoid breaking dev
-// unless we are in a production build where this is required.
 
 const rest = DISCORD_BOT_TOKEN ? new REST({ version: '10' }).setToken(DISCORD_BOT_TOKEN) : null;
 
@@ -25,6 +23,11 @@ export interface DiscordRole {
     position: number;
 }
 
+/**
+ * Ensures a Discord avatar hash or URL is returned as a full valid URL.
+ */
+export { formatDiscordAvatar, getDefaultAvatarUrl };
+
 export async function getGuildMember(discordUserId: string): Promise<DiscordMemberData | null> {
     if (!rest || !DISCORD_GUILD_ID) {
         console.warn("Discord credentials missing, skipping getGuildMember.");
@@ -36,11 +39,15 @@ export async function getGuildMember(discordUserId: string): Promise<DiscordMemb
             Routes.guildMember(DISCORD_GUILD_ID, discordUserId)
         ) as APIGuildMember;
 
+        const avatarHash = member.user?.avatar || member.avatar || null;
+        const userId = member.user?.id || discordUserId;
+        const avatarUrl = formatDiscordAvatar(userId, avatarHash) || getDefaultAvatarUrl(userId);
+
         return {
             isInGuild: true,
             nickname: member.nick || null,
             username: member.user?.username || null,
-            avatar: member.user?.avatar || null,
+            avatar: avatarUrl,
             roles: member.roles,
         };
     } catch (error: any) {
@@ -73,11 +80,14 @@ export async function listGuildMembers(): Promise<Map<string, DiscordMemberData>
         const memberMap = new Map<string, DiscordMemberData>();
         members.forEach(member => {
             if (member.user) {
+                const avatarHash = member.user.avatar || member.avatar || null;
+                const avatarUrl = formatDiscordAvatar(member.user.id, avatarHash) || getDefaultAvatarUrl(member.user.id);
+
                 memberMap.set(member.user.id, {
                     isInGuild: true,
                     nickname: member.nick || null,
                     username: member.user.username,
-                    avatar: member.user.avatar,
+                    avatar: avatarUrl,
                     roles: member.roles,
                 });
             }

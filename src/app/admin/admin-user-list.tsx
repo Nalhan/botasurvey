@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { deleteUser } from "@/app/actions/admin";
 import { Loader2, Trash2, AlertTriangle } from "lucide-react";
+import { formatDiscordAvatar } from "@/lib/avatar";
 
 interface AdminUser {
     internalId: string;
@@ -17,6 +18,7 @@ interface AdminUser {
         isInGuild: boolean;
         nickname: string | null;
         roles: string[];
+        avatar: string | null;
     } | null;
 }
 
@@ -70,9 +72,9 @@ export function AdminUserList({ data }: AdminUserListProps) {
                             <TableRow key={user.internalId}>
                                 <TableCell>
                                     <div className="flex items-center gap-3">
-                                        {user.avatar ? (
+                                        {(user.discordData?.avatar || (user.discordId && user.avatar)) ? (
                                             <NextImage
-                                                src={user.avatar}
+                                                src={user.discordData?.avatar || formatDiscordAvatar(user.discordId!, user.avatar)!}
                                                 width={32}
                                                 height={32}
                                                 className="w-8 h-8 rounded-full bg-secondary"

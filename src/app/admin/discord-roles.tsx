@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import NextImage from "next/image";
+import { formatDiscordAvatar } from "@/lib/avatar";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +30,7 @@ interface AdminUser {
         isInGuild: boolean;
         nickname: string | null;
         roles: string[];
+        avatar: string | null;
     } | null;
 }
 
@@ -312,8 +315,14 @@ export function DiscordRoles({ data, roles, roster, initialRoleMappings }: Disco
                                         <TableRow key={user.internalId}>
                                             <TableCell className="w-72">
                                                 <div className="flex items-center gap-3">
-                                                    {user.avatar ? (
-                                                        <img src={user.avatar} className="w-10 h-10 rounded-full bg-secondary" />
+                                                    {(user.discordData?.avatar || (user.discordId && user.avatar)) ? (
+                                                        <NextImage
+                                                            src={user.discordData?.avatar || formatDiscordAvatar(user.discordId!, user.avatar)!}
+                                                            width={40}
+                                                            height={40}
+                                                            className="w-10 h-10 rounded-full bg-secondary"
+                                                            alt={user.name || ""}
+                                                        />
                                                     ) : (
                                                         <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-xs text-muted-foreground">{user.name?.[0]}</div>
                                                     )}
