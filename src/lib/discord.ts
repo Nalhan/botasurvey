@@ -1,5 +1,6 @@
 import { REST } from '@discordjs/rest';
 import { Routes, APIGuildMember } from 'discord-api-types/v10';
+import { unstable_cache } from 'next/cache';
 
 const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID;
@@ -57,6 +58,100 @@ export async function getGuildMember(discordUserId: string): Promise<DiscordMemb
         return null;
     }
 }
+
+export async function listGuildMembers(): Promise<Map<string, DiscordMemberData>> {
+    if (!rest || !DISCORD_GUILD_ID) {
+        return new Map();
+    }
+
+    try {
+        const members = await rest.get(
+            Routes.guildMembers(DISCORD_GUILD_ID),
+            { query: new URLSearchParams({ limit: '1000' }) }
+        ) as APIGuildMember[];
+
+        const memberMap = new Map<string, DiscordMemberData>();
+        members.forEach(member => {
+            if (member.user) {
+                memberMap.set(member.user.id, {
+                    isInGuild: true,
+                    nickname: member.nick || null,
+                    username: member.user.username,
+                    avatar: member.user.avatar,
+                    roles: member.roles,
+                });
+            }
+        });
+        return memberMap;
+    } catch (error: any) {
+        if (error.code === 50001) {
+            console.warn("⚠️ Discord API Missing Access (50001). This happens if 'Server Members Intent' is not enabled in the Developer Portal. Falling back to individual member fetching.");
+        } else {
+            console.error("Error listing guild members:", error);
+        }
+        return new Map();
+    }
+}
+
+// Caching wrappers
+export const getCachedGuildMembers = unstable_cache(
+    async () => {
+        const map = await listGuildMembers();
+        return Object.fromEntries(map);
+    },
+    ['discord-guild-members'],
+    { revalidate: 300, tags: ['discord'] }
+);
+
+export const getCachedGuildMember = unstable_cache(
+    async (userId: string) => {
+        return await getGuildMember(userId);
+    },
+    ['discord-user'],
+    { revalidate: 300, tags: ['discord'] }
+);
+
+/**
+ * Optimized helper to get multiple members. 
+ * Tries the batch cache first, then falls back to parallel individual fetches.
+ */
+export async function getGuildMembersData(userIds: string[]): Promise<Record<string, DiscordMemberData | null>> {
+    const cachedMap = await getCachedGuildMembers();
+    const results: Record<string, DiscordMemberData | null> = {};
+    const missingIds: string[] = [];
+
+    // 1. Check batch cache
+    userIds.forEach(id => {
+        if (cachedMap[id]) {
+            results[id] = cachedMap[id];
+        } else {
+            missingIds.push(id);
+        }
+    });
+
+    // 2. Fallback for missing ones (or if batch failed completely)
+    if (missingIds.length > 0) {
+        // Limit concurrency to avoid getting flagged by Discord
+        const concurrencyLimit = 5;
+        for (let i = 0; i < missingIds.length; i += concurrencyLimit) {
+            const chunk = missingIds.slice(i, i + concurrencyLimit);
+            const data = await Promise.all(chunk.map(id => getCachedGuildMember(id)));
+            chunk.forEach((id, index) => {
+                results[id] = data[index];
+            });
+        }
+    }
+
+    return results;
+}
+
+export const getCachedGuildRoles = unstable_cache(
+    async () => {
+        return await getGuildRoles();
+    },
+    ['discord-guild-roles'],
+    { revalidate: 3600, tags: ['discord'] }
+);
 
 export async function updateGuildMemberRoles(discordUserId: string, roleIds: string[]): Promise<boolean> {
     if (!rest || !DISCORD_GUILD_ID) {

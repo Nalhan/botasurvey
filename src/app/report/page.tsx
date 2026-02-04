@@ -4,7 +4,7 @@ import { submissions, users, accounts } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { ReportShell } from "@/components/report/report-shell";
-import { getGuildMember } from "@/lib/discord";
+import { getGuildMembersData } from "@/lib/discord";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Home, Shield } from "lucide-react";
@@ -14,33 +14,42 @@ export default async function ReportPage() {
     const session = await auth();
     if (!session) redirect("/");
 
-    const isUserAdmin = await isAdmin(session);
+    // 1. Fetch Admin status and DB data in parallel
+    const [isUserAdmin, rawData] = await Promise.all([
+        isAdmin(session),
+        db.select({
+            submission: submissions,
+            user: users,
+            discordId: accounts.providerAccountId
+        })
+            .from(submissions)
+            .leftJoin(users, eq(submissions.userId, users.id))
+            .leftJoin(accounts, and(
+                eq(users.id, accounts.userId),
+                eq(accounts.provider, 'discord')
+            ))
+            .orderBy(desc(submissions.createdAt)),
+    ]);
 
-    // Fetch all submissions with user info and discord ID
-    const rawData = await db.select({
-        submission: submissions,
-        user: users,
-        discordId: accounts.providerAccountId
-    })
-        .from(submissions)
-        .leftJoin(users, eq(submissions.userId, users.id))
-        .leftJoin(accounts, and(
-            eq(users.id, accounts.userId),
-            eq(accounts.provider, 'discord')
-        ))
-        .orderBy(desc(submissions.createdAt));
+    // 2. Fetch Discord data for specific IDs found
+    const discordIds = rawData.filter(r => r.discordId).map(r => r.discordId!);
+    const discordMembersMap = await getGuildMembersData(discordIds);
 
-    // Hydrate with live Discord data
-    const data = await Promise.all(rawData.map(async (row) => {
-        let discordData = null;
-        if (row.discordId) {
-            discordData = await getGuildMember(row.discordId);
-        }
+    // 3. Hydrate
+    const data = rawData.map((row) => {
+        const discordData = row.discordId ? (discordMembersMap[row.discordId] || {
+            isInGuild: false,
+            nickname: null,
+            username: null,
+            avatar: null,
+            roles: [],
+        }) : null;
+
         return {
             ...row,
             discordData
         };
-    }));
+    });
 
     return (
         <div className="h-screen flex flex-col overflow-hidden">

@@ -25,6 +25,10 @@ console.log(`Running migrations from: ${migrationsFolder}`);
 try {
     migrate(db, { migrationsFolder });
     console.log('Migrations completed successfully.');
-} catch (error) {
-    console.error('Migration failed:', error);
+} catch (error: any) {
+    if (error.message?.includes('already exists')) {
+        console.log('Database schema is already up to date.');
+    } else {
+        console.error('Migration failed:', error);
+    }
 }

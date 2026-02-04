@@ -1,10 +1,9 @@
 import { auth } from "@/auth";
 import { isAdmin } from "@/lib/admin";
-import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { submissions, users, accounts, raidCompositions } from "@/db/schema";
-import { eq, desc, and } from "drizzle-orm";
-import { getGuildRoles, getGuildMember, DiscordRole } from "@/lib/discord";
+import { eq, and } from "drizzle-orm";
+import { getCachedGuildRoles, getGuildMembersData } from "@/lib/discord";
 import { AdminDashboard } from "./admin-dashboard";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -27,54 +26,40 @@ export default async function AdminPage() {
         );
     }
 
-    // 1. Fetch all users and their Discord IDs
-    const rawUsers = await db.select({
-        user: users,
-        submission: submissions,
-        discordId: accounts.providerAccountId
-    })
-        .from(users)
-        .leftJoin(submissions, eq(users.id, submissions.userId))
-        .leftJoin(accounts, and(
-            eq(users.id, accounts.userId),
-            eq(accounts.provider, 'discord')
-        ));
+    // 1. Fetch DB data and roles in parallel
+    const [rawUsers, guildRoles, raidComp] = await Promise.all([
+        db.select({
+            user: users,
+            submission: submissions,
+            discordId: accounts.providerAccountId
+        })
+            .from(users)
+            .leftJoin(submissions, eq(users.id, submissions.userId))
+            .leftJoin(accounts, and(
+                eq(users.id, accounts.userId),
+                eq(accounts.provider, 'discord')
+            )),
+        getCachedGuildRoles(),
+        db.select().from(raidCompositions).where(eq(raidCompositions.id, 1))
+    ]);
 
-    // 2. Fetch Guild Roles
-    const guildRoles = await getGuildRoles();
+    // 2. Fetch Discord data for specific IDs found
+    const discordIds = rawUsers.filter(r => r.discordId).map(r => r.discordId!);
+    const discordMembersMap = await getGuildMembersData(discordIds);
 
-    // 3. Fetch Live Discord Member Data for all users who have a Discord ID
-    // Note: In a large scale app, we would paginate this or use batching more carefully.
-    // For a guild roster (usually < 100 active raiders), this is acceptable.
-    const memberDataPromises = rawUsers
-        .filter(u => u.discordId)
-        .map(async (u) => {
-            const member = await getGuildMember(u.discordId!);
-            return {
-                userId: u.user.id,
-                discordId: u.discordId!,
-                member
-            };
-        });
-
-    const members = await Promise.all(memberDataPromises);
-    const memberMap = new Map(members.map(m => [m.userId, m]));
-
-    // 4. Fetch Raid Composition (for class alignment)
-    const raidComp = await db.select().from(raidCompositions).where(eq(raidCompositions.id, 1));
     const roster = raidComp.length > 0 ? raidComp[0].rosterData : [];
     const roleMappings = raidComp.length > 0 ? raidComp[0].roleMappings : {};
 
     // Combine it all for the client component
     const adminData = rawUsers.map(row => {
-        const discordInfo = memberMap.get(row.user.id);
+        const discordInfo = row.discordId ? discordMembersMap[row.discordId] : null;
         return {
             internalId: row.user.id,
             name: row.user.name,
             avatar: row.user.image,
             submission: row.submission,
             discordId: row.discordId,
-            discordData: discordInfo?.member || null
+            discordData: discordInfo || null
         };
     });
 
