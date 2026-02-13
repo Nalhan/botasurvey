@@ -1,0 +1,25 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies only when needed
+RUN apk add --no-cache libc6-compat
+
+# Install dependencies based on the preferred package manager
+COPY package.json package-lock.json* ./
+RUN npm install
+
+# Copying source code is helpful for initial build, but will be overridden by volume mount
+COPY . .
+
+# Next.js collects completely anonymous telemetry data about general usage.
+ENV NEXT_TELEMETRY_DISABLED=1
+
+EXPOSE 3000
+USER node
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+# Use dev script for live reloading
+CMD ["npm", "run", "dev"]

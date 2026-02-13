@@ -23,13 +23,19 @@ This project is configured to run as a Docker container using Docker Compose.
     mkdir data
     ```
 
-3.  **Build and Run:**
-    Use Docker Compose to build and start the application.
+3.  **Build and Run (Production):**
+    Use Docker Compose to build and start the application in production mode.
     ```bash
     docker-compose -f docker-compose-example.yml up -d --build
     ```
 
-4.  **Access the Application:**
+4.  **Build and Run (Development):**
+    Use the default Docker Compose file to start the application in development mode with live reloading.
+    ```bash
+    docker-compose up --build
+    ```
+
+5.  **Access the Application:**
     The application will be available at `http://localhost:3000`.
 
 ## Database Persistence
