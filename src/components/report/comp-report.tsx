@@ -1,7 +1,7 @@
 "use client";
 
 import { Player } from "./report-shell";
-import { CLASS_ARMOR_TYPES, getCapabilities, RaidBuff, RaidUtility, ArmorType } from "@/lib/raid-data";
+import { CLASS_ARMOR_TYPES, getCapabilities, RaidBuff, RaidUtility, ArmorType, MainStat, SPEC_MAIN_STATS } from "@/lib/raid-data";
 import { cn } from "@/lib/utils";
 import { Check, X, Shield, Sword, Heart, Info } from "lucide-react";
 import {
@@ -79,17 +79,33 @@ export function CompReport({ roster }: { roster: Player[] }) {
         if (armor) armorCounts[armor]++;
     });
 
+    // 4. Main Stats
+    const mainStatCounts: Record<MainStat, number> = {
+        [MainStat.Intellect]: 0,
+        [MainStat.Strength]: 0,
+        [MainStat.Agility]: 0,
+    };
+
+    roster.forEach(p => {
+        if (!p.classId) return;
+
+        let stat: MainStat | undefined;
+
+        // Try spec-specific mapping first
+        if (p.specId) {
+            stat = SPEC_MAIN_STATS[`${p.classId}-${p.specId}`];
+        }
+
+        // Fallback to class mapping
+        if (!stat) {
+            stat = SPEC_MAIN_STATS[p.classId];
+        }
+
+        if (stat) mainStatCounts[stat]++;
+    });
+
     // Define all buffs to show checklist
     const allBuffs = Object.values(RaidBuff);
-    const essentialUtilities = [
-        RaidUtility.Bloodlust,
-        RaidUtility.CombatRes,
-        RaidUtility.MassDispel,
-        RaidUtility.WarlockKit,
-        RaidUtility.RallyingCry,
-        RaidUtility.Darkness,
-        RaidUtility.AMZ,
-    ];
 
     const renderContributors = (names: { name: string, icon: string }[]) => {
         if (!names || names.length === 0) return null;
@@ -114,66 +130,66 @@ export function CompReport({ roster }: { roster: Player[] }) {
     };
 
     return (
-        <div className="bg-card border rounded-lg p-4 space-y-6">
-            <div className="flex flex-wrap gap-4 items-center justify-between border-b pb-4">
-                <div className="flex gap-4">
-                    <RoleBadge icon={Shield} count={roleCounts.Tank} target={2} color="text-blue-400 bg-blue-500/10" />
-                    <RoleBadge icon={Heart} count={roleCounts.Healer} target={4} color="text-green-400 bg-green-500/10" />
-                    <RoleBadge icon={Sword} count={roleCounts.Damage} target={14} color="text-red-400 bg-red-500/10" />
-                    <div className="text-sm font-bold ml-2 self-center text-muted-foreground">
-                        Total: {roster.length} / 20
+        <TooltipProvider>
+            <div className="bg-card border rounded-lg p-4 space-y-6">
+                <div className="flex flex-wrap gap-4 items-center justify-between border-b pb-4">
+                    <div className="flex gap-4">
+                        <RoleBadge icon={Shield} count={roleCounts.Tank} target={2} color="text-blue-400 bg-blue-500/10" />
+                        <RoleBadge icon={Heart} count={roleCounts.Healer} target={4} color="text-green-400 bg-green-500/10" />
+                        <RoleBadge icon={Sword} count={roleCounts.Damage} target={14} color="text-red-400 bg-red-500/10" />
+                        <div className="text-sm font-bold ml-2 self-center text-muted-foreground">
+                            Total: {roster.length} / 20
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Class Counts Row */}
-            <div className="flex flex-wrap gap-2 pb-2">
-                {WOW_CLASSES.map(wowClass => {
-                    const count = classCounts[wowClass.id] || 0;
-                    return (
-                        <div
-                            key={wowClass.id}
-                            className={cn(
-                                "flex items-center gap-1.5 px-2 py-1 rounded-md border transition-all",
-                                count > 0
-                                    ? "bg-secondary/40 border-secondary-foreground/10 text-foreground"
-                                    : "opacity-20 grayscale border-transparent text-muted-foreground"
-                            )}
-                            title={wowClass.name}
-                        >
-                            <ZamIcon icon={wowClass.icon} size={16} />
-                            <span className="text-xs font-bold leading-none">{count}</span>
-                        </div>
-                    );
-                })}
-            </div>
+                {/* Class Counts Row */}
+                <div className="flex flex-wrap gap-2 pb-2">
+                    {WOW_CLASSES.map(wowClass => {
+                        const count = classCounts[wowClass.id] || 0;
+                        return (
+                            <div
+                                key={wowClass.id}
+                                className={cn(
+                                    "flex items-center gap-1.5 px-2 py-1 rounded-md border transition-all",
+                                    count > 0
+                                        ? "bg-secondary/40 border-secondary-foreground/10 text-foreground"
+                                        : "opacity-20 grayscale border-transparent text-muted-foreground"
+                                )}
+                                title={wowClass.name}
+                            >
+                                <ZamIcon icon={wowClass.icon} size={16} />
+                                <span className="text-xs font-bold leading-none">{count}</span>
+                            </div>
+                        );
+                    })}
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                {/* Column 1: Buff Coverage & Slows */}
-                <div className="space-y-6">
-                    <div className="space-y-2">
-                        <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center justify-between">
-                            Buff Coverage
-                            <span className="text-[10px] font-normal lowercase opacity-70">({activeBuffs.size}/{allBuffs.length})</span>
-                        </h3>
-                        <div className="grid grid-cols-1 gap-1">
-                            {[
-                                { id: RaidBuff.AttackPower, icon: 'ability_warrior_battleshout', label: '5% Attack Power' },
-                                { id: RaidBuff.Intellect, icon: 'spell_holy_magicalsentry', label: '3% Intellect' },
-                                { id: RaidBuff.Stamina, icon: 'spell_holy_wordfortitude', label: '5% Stamina' },
-                                { id: RaidBuff.Versatility, icon: 'spell_nature_regeneration', label: '3% Versatility' },
-                                { id: RaidBuff.DamageReduction, icon: 'spell_holy_devotionaura', label: '3% DR (Devo)' },
-                                { id: RaidBuff.MagicDamage, icon: 'ability_demonhunter_empowerwards', label: '5% Magic Dmg' },
-                                { id: RaidBuff.PhysicalDamage, icon: 'ability_monk_sparring', label: '5% Phys Dmg' },
-                                { id: RaidBuff.MovementCDR, icon: 'ability_evoker_blessingofthebronze', label: '15% Movement CDR' },
-                                { id: RaidBuff.HuntersMark, icon: 'ability_hunter_snipershot', label: "5% Damage" },
-                                { id: RaidBuff.AtrophicPoison, icon: 'ability_rogue_nervesofsteel', label: '3% DR (Poison)' },
-                                { id: RaidBuff.Skyfury, icon: 'spell_nature_windfury', label: 'Skyfury' },
-                            ].map(buff => {
-                                const isActive = activeBuffs.has(buff.id as RaidBuff);
-                                return (
-                                    <TooltipProvider key={buff.id}>
-                                        <Tooltip>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    {/* Column 1: Buff Coverage & Slows */}
+                    <div className="space-y-6">
+                        <div className="space-y-2">
+                            <h3 className="text-xs font-bold uppercase text-muted-foreground flex items-center justify-between">
+                                Buff Coverage
+                                <span className="text-[10px] font-normal lowercase opacity-70">({activeBuffs.size}/{allBuffs.length})</span>
+                            </h3>
+                            <div className="grid grid-cols-1 gap-1">
+                                {[
+                                    { id: RaidBuff.AttackPower, icon: 'ability_warrior_battleshout', label: '5% Attack Power' },
+                                    { id: RaidBuff.Intellect, icon: 'spell_holy_magicalsentry', label: '3% Intellect' },
+                                    { id: RaidBuff.Stamina, icon: 'spell_holy_wordfortitude', label: '5% Stamina' },
+                                    { id: RaidBuff.Versatility, icon: 'spell_nature_regeneration', label: '3% Versatility' },
+                                    { id: RaidBuff.DamageReduction, icon: 'spell_holy_devotionaura', label: '3% DR (Devo)' },
+                                    { id: RaidBuff.MagicDamage, icon: 'ability_demonhunter_empowerwards', label: '5% Magic Dmg' },
+                                    { id: RaidBuff.PhysicalDamage, icon: 'ability_monk_sparring', label: '5% Phys Dmg' },
+                                    { id: RaidBuff.MovementCDR, icon: 'ability_evoker_blessingofthebronze', label: '15% Movement CDR' },
+                                    { id: RaidBuff.HuntersMark, icon: 'ability_hunter_snipershot', label: "5% Damage" },
+                                    { id: RaidBuff.AtrophicPoison, icon: 'ability_rogue_nervesofsteel', label: '3% DR (Poison)' },
+                                    { id: RaidBuff.Skyfury, icon: 'spell_nature_windfury', label: 'Skyfury' },
+                                ].map(buff => {
+                                    const isActive = activeBuffs.has(buff.id as RaidBuff);
+                                    return (
+                                        <Tooltip key={buff.id}>
                                             <TooltipTrigger asChild>
                                                 <div className={cn(
                                                     "text-xs flex items-center justify-between pr-2 py-0.5 cursor-help",
@@ -196,11 +212,9 @@ export function CompReport({ roster }: { roster: Player[] }) {
                                                 {isActive && renderContributors(buffContributors[buff.id])}
                                             </TooltipContent>
                                         </Tooltip>
-                                    </TooltipProvider>
-                                );
-                            })}
+                                    );
+                                })}
 
-                            <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <div className={cn("text-xs flex items-center justify-between pr-2 py-0.5 cursor-help", activeUtilities[RaidUtility.MortalWounds] > 0 ? "text-foreground" : "text-muted-foreground/30")}>
@@ -216,9 +230,7 @@ export function CompReport({ roster }: { roster: Player[] }) {
                                         {activeUtilities[RaidUtility.MortalWounds] > 0 && renderContributors(utilityContributors[RaidUtility.MortalWounds])}
                                     </TooltipContent>
                                 </Tooltip>
-                            </TooltipProvider>
 
-                            <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <div className={cn("text-xs flex items-center justify-between pr-2 py-0.5 cursor-help", activeUtilities[RaidUtility.MeleeSlowStack] > 0 ? "text-foreground" : "text-muted-foreground/30")}>
@@ -243,30 +255,28 @@ export function CompReport({ roster }: { roster: Player[] }) {
                                         {activeUtilities[RaidUtility.MeleeSlowStack] > 0 && renderContributors(utilityContributors[RaidUtility.MeleeSlowStack])}
                                     </TooltipContent>
                                 </Tooltip>
-                            </TooltipProvider>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Column 2: Raid CDs & Movement */}
-                <div className="space-y-6">
-                    <div className="space-y-2">
-                        <h3 className="text-xs font-bold uppercase text-muted-foreground">Major Raid CDs</h3>
-                        <div className="flex gap-1.5 flex-wrap">
-                            {[
-                                { id: RaidUtility.AMZ, icon: 'spell_deathknight_antimagiczone', label: 'AMZ' },
-                                { id: RaidUtility.Darkness, icon: 'ability_demonhunter_darkness', label: 'Darkness' },
-                                { id: RaidUtility.RallyingCry, icon: 'ability_warrior_rallyingcry', label: 'Rallying Cry' },
-                                { id: RaidUtility.AuraMastery, icon: 'spell_holy_auramastery', label: 'Aura Mastery' },
-                                { id: RaidUtility.SpiritLink, icon: 'spell_shaman_spiritlink', label: 'Spirit Link' },
-                                { id: RaidUtility.Barrier, icon: 'spell_holy_powerwordbarrier', label: 'Barrier' },
-                                { id: RaidUtility.Hymn, icon: 'spell_holy_divinehymn', label: 'Hymn' },
-                                { id: RaidUtility.Rewind, icon: 'ability_evoker_rewind', label: 'Rewind' },
-                            ].map(cd => {
-                                const count = activeUtilities[cd.id as RaidUtility] || 0;
-                                return (
-                                    <TooltipProvider key={cd.id}>
-                                        <Tooltip>
+                    {/* Column 2: Raid CDs & Movement */}
+                    <div className="space-y-6">
+                        <div className="space-y-2">
+                            <h3 className="text-xs font-bold uppercase text-muted-foreground">Major Raid CDs</h3>
+                            <div className="flex gap-1.5 flex-wrap">
+                                {[
+                                    { id: RaidUtility.AMZ, icon: 'spell_deathknight_antimagiczone', label: 'AMZ' },
+                                    { id: RaidUtility.Darkness, icon: 'ability_demonhunter_darkness', label: 'Darkness' },
+                                    { id: RaidUtility.RallyingCry, icon: 'ability_warrior_rallyingcry', label: 'Rallying Cry' },
+                                    { id: RaidUtility.AuraMastery, icon: 'spell_holy_auramastery', label: 'Aura Mastery' },
+                                    { id: RaidUtility.SpiritLink, icon: 'spell_shaman_spiritlink', label: 'Spirit Link' },
+                                    { id: RaidUtility.Barrier, icon: 'spell_holy_powerwordbarrier', label: 'Barrier' },
+                                    { id: RaidUtility.Hymn, icon: 'spell_holy_divinehymn', label: 'Hymn' },
+                                    { id: RaidUtility.Rewind, icon: 'ability_evoker_rewind', label: 'Rewind' },
+                                ].map(cd => {
+                                    const count = activeUtilities[cd.id as RaidUtility] || 0;
+                                    return (
+                                        <Tooltip key={cd.id}>
                                             <TooltipTrigger asChild>
                                                 <div className={cn(
                                                     "relative p-1 rounded-md border transition-all hover:scale-105 active:scale-95 cursor-default",
@@ -285,25 +295,23 @@ export function CompReport({ roster }: { roster: Player[] }) {
                                                 {count > 0 && renderContributors(utilityContributors[cd.id as RaidUtility])}
                                             </TooltipContent>
                                         </Tooltip>
-                                    </TooltipProvider>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="space-y-2">
-                        <h3 className="text-xs font-bold uppercase text-muted-foreground">Raid Movement</h3>
-                        <div className="flex gap-1.5 flex-wrap">
-                            {[
-                                { id: RaidUtility.Roar, icon: 'spell_druid_stampedingroar_cat', label: 'Stampeding Roar' },
-                                { id: RaidUtility.WindRush, icon: 'ability_shaman_windwalktotem', label: 'Wind Rush' },
-                                { id: RaidUtility.TimeSpiral, icon: 'ability_evoker_timespiral', label: 'Time Spiral' },
-                                { id: RaidUtility.WarlockKit, icon: 'spell_warlock_demonicportal_purple', label: 'Gateway' },
-                            ].map(cd => {
-                                const count = activeUtilities[cd.id as RaidUtility] || 0;
-                                return (
-                                    <TooltipProvider key={cd.id}>
-                                        <Tooltip>
+                        <div className="space-y-2">
+                            <h3 className="text-xs font-bold uppercase text-muted-foreground">Raid Movement</h3>
+                            <div className="flex gap-1.5 flex-wrap">
+                                {[
+                                    { id: RaidUtility.Roar, icon: 'spell_druid_stampedingroar_cat', label: 'Stampeding Roar' },
+                                    { id: RaidUtility.WindRush, icon: 'ability_shaman_windwalktotem', label: 'Wind Rush' },
+                                    { id: RaidUtility.TimeSpiral, icon: 'ability_evoker_timespiral', label: 'Time Spiral' },
+                                    { id: RaidUtility.WarlockKit, icon: 'spell_warlock_demonicportal_purple', label: 'Gateway' },
+                                ].map(cd => {
+                                    const count = activeUtilities[cd.id as RaidUtility] || 0;
+                                    return (
+                                        <Tooltip key={cd.id}>
                                             <TooltipTrigger asChild>
                                                 <div className={cn(
                                                     "relative p-1 rounded-md border transition-all hover:scale-105 active:scale-95 cursor-default",
@@ -322,26 +330,24 @@ export function CompReport({ roster }: { roster: Player[] }) {
                                                 {count > 0 && renderContributors(utilityContributors[cd.id as RaidUtility])}
                                             </TooltipContent>
                                         </Tooltip>
-                                    </TooltipProvider>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="space-y-2">
-                        <h3 className="text-xs font-bold uppercase text-muted-foreground">Movement Externals</h3>
-                        <div className="flex gap-1.5 flex-wrap">
-                            {[
-                                { id: RaidUtility.TigersLust, icon: 'ability_monk_tigerslust', label: "Tiger's Lust" },
-                                { id: RaidUtility.BlessingOfFreedom, icon: 'spell_holy_sealofvalor', label: 'Blessing of Freedom' },
-                                { id: RaidUtility.LeapOfFaith, icon: 'priest_spell_leapoffaith_a', label: 'Leap of Faith' },
-                                { id: RaidUtility.Rescue, icon: 'ability_evoker_flywithme', label: 'Rescue' },
-                                { id: RaidUtility.SpatialParadox, icon: 'ability_evoker_stretchtime', label: 'Spatial Paradox' },
-                            ].map(cd => {
-                                const count = activeUtilities[cd.id as RaidUtility] || 0;
-                                return (
-                                    <TooltipProvider key={cd.id}>
-                                        <Tooltip>
+                        <div className="space-y-2">
+                            <h3 className="text-xs font-bold uppercase text-muted-foreground">Movement Externals</h3>
+                            <div className="flex gap-1.5 flex-wrap">
+                                {[
+                                    { id: RaidUtility.TigersLust, icon: 'ability_monk_tigerslust', label: "Tiger's Lust" },
+                                    { id: RaidUtility.BlessingOfFreedom, icon: 'spell_holy_sealofvalor', label: 'Blessing of Freedom' },
+                                    { id: RaidUtility.LeapOfFaith, icon: 'priest_spell_leapoffaith_a', label: 'Leap of Faith' },
+                                    { id: RaidUtility.Rescue, icon: 'ability_evoker_flywithme', label: 'Rescue' },
+                                    { id: RaidUtility.SpatialParadox, icon: 'ability_evoker_stretchtime', label: 'Spatial Paradox' },
+                                ].map(cd => {
+                                    const count = activeUtilities[cd.id as RaidUtility] || 0;
+                                    return (
+                                        <Tooltip key={cd.id}>
                                             <TooltipTrigger asChild>
                                                 <div className={cn(
                                                     "relative p-1 rounded-md border transition-all hover:scale-105 active:scale-95 cursor-default",
@@ -360,26 +366,24 @@ export function CompReport({ roster }: { roster: Player[] }) {
                                                 {count > 0 && renderContributors(utilityContributors[cd.id as RaidUtility])}
                                             </TooltipContent>
                                         </Tooltip>
-                                    </TooltipProvider>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Column 3: Utility, Support & Security */}
-                <div className="space-y-6">
-                    <div className="space-y-2">
-                        <h3 className="text-xs font-bold uppercase text-muted-foreground">Key Utility</h3>
-                        <div className="flex gap-1.5 flex-wrap">
-                            {[
-                                { id: RaidUtility.Bloodlust, icon: 'spell_nature_bloodlust', label: 'Bloodlust' },
-                                { id: RaidUtility.CombatRes, icon: 'spell_nature_reincarnation', label: 'Combat Res' },
-                            ].map(util => {
-                                const count = activeUtilities[util.id as RaidUtility] || 0;
-                                return (
-                                    <TooltipProvider key={util.id}>
-                                        <Tooltip>
+                    {/* Column 3: Utility, Support & Security */}
+                    <div className="space-y-6">
+                        <div className="space-y-2">
+                            <h3 className="text-xs font-bold uppercase text-muted-foreground">Key Utility</h3>
+                            <div className="flex gap-1.5 flex-wrap">
+                                {[
+                                    { id: RaidUtility.Bloodlust, icon: 'spell_nature_bloodlust', label: 'Bloodlust' },
+                                    { id: RaidUtility.CombatRes, icon: 'spell_nature_reincarnation', label: 'Combat Res' },
+                                ].map(util => {
+                                    const count = activeUtilities[util.id as RaidUtility] || 0;
+                                    return (
+                                        <Tooltip key={util.id}>
                                             <TooltipTrigger asChild>
                                                 <div className={cn(
                                                     "relative p-1 rounded-md border transition-all hover:scale-105 active:scale-95 cursor-default",
@@ -398,25 +402,23 @@ export function CompReport({ roster }: { roster: Player[] }) {
                                                 {count > 0 && renderContributors(utilityContributors[util.id as RaidUtility])}
                                             </TooltipContent>
                                         </Tooltip>
-                                    </TooltipProvider>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="space-y-2">
-                        <h3 className="text-xs font-bold uppercase text-muted-foreground">Support</h3>
-                        <div className="flex gap-1.5 flex-wrap">
-                            {[
-                                { id: RaidUtility.Augmentation, icon: 'classicon_evoker_augmentation', label: 'Augmentation Buffs' },
-                                { id: RaidUtility.SourceOfMagic, icon: 'ability_evoker_blue_01', label: 'Source of Magic' },
-                                { id: RaidUtility.PowerInfusion, icon: 'spell_holy_powerinfusion', label: 'Power Infusion' },
-                                { id: RaidUtility.Innervate, icon: 'spell_nature_lightning', label: 'Innervate' },
-                            ].map(util => {
-                                const count = activeUtilities[util.id as RaidUtility] || 0;
-                                return (
-                                    <TooltipProvider key={util.id}>
-                                        <Tooltip>
+                        <div className="space-y-2">
+                            <h3 className="text-xs font-bold uppercase text-muted-foreground">Support</h3>
+                            <div className="flex gap-1.5 flex-wrap">
+                                {[
+                                    { id: RaidUtility.Augmentation, icon: 'classicon_evoker_augmentation', label: 'Augmentation Buffs' },
+                                    { id: RaidUtility.SourceOfMagic, icon: 'ability_evoker_blue_01', label: 'Source of Magic' },
+                                    { id: RaidUtility.PowerInfusion, icon: 'spell_holy_powerinfusion', label: 'Power Infusion' },
+                                    { id: RaidUtility.Innervate, icon: 'spell_nature_lightning', label: 'Innervate' },
+                                ].map(util => {
+                                    const count = activeUtilities[util.id as RaidUtility] || 0;
+                                    return (
+                                        <Tooltip key={util.id}>
                                             <TooltipTrigger asChild>
                                                 <div className={cn(
                                                     "relative p-1 rounded-md border transition-all hover:scale-105 active:scale-95 cursor-default",
@@ -435,27 +437,25 @@ export function CompReport({ roster }: { roster: Player[] }) {
                                                 {count > 0 && renderContributors(utilityContributors[util.id as RaidUtility])}
                                             </TooltipContent>
                                         </Tooltip>
-                                    </TooltipProvider>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="space-y-2">
-                        <h3 className="text-xs font-bold uppercase text-muted-foreground">Immunities</h3>
-                        <div className="flex gap-1.5 flex-wrap">
-                            {[
-                                { id: RaidUtility.DivineShield, icon: 'spell_holy_divineshield', label: 'Divine Shield' },
-                                { id: RaidUtility.IceBlock, icon: 'spell_frost_frost', label: 'Ice Block' },
-                                { id: RaidUtility.Turtle, icon: 'ability_hunter_pet_turtle', label: 'Aspect of the Turtle' },
-                                { id: RaidUtility.Cloak, icon: 'spell_shadow_nethercloak', label: 'Cloak of Shadows' },
-                                { id: RaidUtility.BoP, icon: 'spell_holy_sealofprotection', label: 'Blessing of Protection' },
-                                { id: RaidUtility.BoS, icon: 'spell_holy_blessingofprotection', label: 'Blessing of Spellwarding' },
-                            ].map(imm => {
-                                const count = activeUtilities[imm.id as RaidUtility] || 0;
-                                return (
-                                    <TooltipProvider key={imm.id}>
-                                        <Tooltip>
+                        <div className="space-y-2">
+                            <h3 className="text-xs font-bold uppercase text-muted-foreground">Immunities</h3>
+                            <div className="flex gap-1.5 flex-wrap">
+                                {[
+                                    { id: RaidUtility.DivineShield, icon: 'spell_holy_divineshield', label: 'Divine Shield' },
+                                    { id: RaidUtility.IceBlock, icon: 'spell_frost_frost', label: 'Ice Block' },
+                                    { id: RaidUtility.Turtle, icon: 'ability_hunter_pet_turtle', label: 'Aspect of the Turtle' },
+                                    { id: RaidUtility.Cloak, icon: 'spell_shadow_nethercloak', label: 'Cloak of Shadows' },
+                                    { id: RaidUtility.BoP, icon: 'spell_holy_sealofprotection', label: 'Blessing of Protection' },
+                                    { id: RaidUtility.BoS, icon: 'spell_holy_blessingofprotection', label: 'Blessing of Spellwarding' },
+                                ].map(imm => {
+                                    const count = activeUtilities[imm.id as RaidUtility] || 0;
+                                    return (
+                                        <Tooltip key={imm.id}>
                                             <TooltipTrigger asChild>
                                                 <div className={cn(
                                                     "relative p-1 rounded-md border transition-all hover:scale-105 active:scale-95 cursor-default",
@@ -474,27 +474,25 @@ export function CompReport({ roster }: { roster: Player[] }) {
                                                 {count > 0 && renderContributors(utilityContributors[imm.id as RaidUtility])}
                                             </TooltipContent>
                                         </Tooltip>
-                                    </TooltipProvider>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="space-y-2">
-                        <h3 className="text-xs font-bold uppercase text-muted-foreground">External CDs</h3>
-                        <div className="flex gap-1.5 flex-wrap">
-                            {[
-                                { id: RaidUtility.Ironbark, icon: 'spell_druid_ironbark', label: 'Ironbark' },
-                                { id: RaidUtility.PainSupp, icon: 'spell_holy_painsupression', label: 'Pain Supp' },
-                                { id: RaidUtility.GuardianSpirit, icon: 'spell_holy_guardianspirit', label: 'Guardian Spirit' },
-                                { id: RaidUtility.Sacrifice, icon: 'spell_holy_sealofsacrifice', label: 'Sacrifice' },
-                                { id: RaidUtility.TimeDilation, icon: 'ability_evoker_timedilation', label: 'Time Dilation' },
-                                { id: RaidUtility.LifeCocoon, icon: 'ability_monk_chicocoon', label: 'Life Cocoon' },
-                            ].map(cd => {
-                                const count = activeUtilities[cd.id as RaidUtility] || 0;
-                                return (
-                                    <TooltipProvider key={cd.id}>
-                                        <Tooltip>
+                        <div className="space-y-2">
+                            <h3 className="text-xs font-bold uppercase text-muted-foreground">External CDs</h3>
+                            <div className="flex gap-1.5 flex-wrap">
+                                {[
+                                    { id: RaidUtility.Ironbark, icon: 'spell_druid_ironbark', label: 'Ironbark' },
+                                    { id: RaidUtility.PainSupp, icon: 'spell_holy_painsupression', label: 'Pain Supp' },
+                                    { id: RaidUtility.GuardianSpirit, icon: 'spell_holy_guardianspirit', label: 'Guardian Spirit' },
+                                    { id: RaidUtility.Sacrifice, icon: 'spell_holy_sealofsacrifice', label: 'Sacrifice' },
+                                    { id: RaidUtility.TimeDilation, icon: 'ability_evoker_timedilation', label: 'Time Dilation' },
+                                    { id: RaidUtility.LifeCocoon, icon: 'ability_monk_chicocoon', label: 'Life Cocoon' },
+                                ].map(cd => {
+                                    const count = activeUtilities[cd.id as RaidUtility] || 0;
+                                    return (
+                                        <Tooltip key={cd.id}>
                                             <TooltipTrigger asChild>
                                                 <div className={cn(
                                                     "relative p-1 rounded-md border transition-all hover:scale-105 active:scale-95 cursor-default",
@@ -513,30 +511,28 @@ export function CompReport({ roster }: { roster: Player[] }) {
                                                 {count > 0 && renderContributors(utilityContributors[cd.id as RaidUtility])}
                                             </TooltipContent>
                                         </Tooltip>
-                                    </TooltipProvider>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Column 4: Dispels & CC */}
-                <div className="space-y-6">
-                    <div className="space-y-2">
-                        <h3 className="text-xs font-bold uppercase text-muted-foreground">Dispel Coverage</h3>
-                        <div className="flex gap-1.5 flex-wrap">
-                            {[
-                                { id: RaidUtility.MassDispel, icon: 'spell_arcane_massdispel', label: 'Mass Dispel' },
-                                { id: RaidUtility.Revival, icon: 'spell_monk_revival', label: 'Revival' },
-                                { id: RaidUtility.CurseDispel, icon: 'spell_nature_removecurse', label: 'Curse' },
-                                { id: RaidUtility.PoisonDispel, icon: 'spell_nature_nullifypoison', label: 'Poison' },
-                                { id: RaidUtility.DiseaseDispel, icon: 'spell_holy_nullifydisease', label: 'Disease' },
-                                { id: RaidUtility.Soothe, icon: 'ability_hunter_beastsoothe', label: 'Soothe' },
-                            ].map(dispel => {
-                                const count = activeUtilities[dispel.id as RaidUtility] || 0;
-                                return (
-                                    <TooltipProvider key={dispel.id}>
-                                        <Tooltip>
+                    {/* Column 4: Dispels & CC */}
+                    <div className="space-y-6">
+                        <div className="space-y-2">
+                            <h3 className="text-xs font-bold uppercase text-muted-foreground">Dispel Coverage</h3>
+                            <div className="flex gap-1.5 flex-wrap">
+                                {[
+                                    { id: RaidUtility.MassDispel, icon: 'spell_arcane_massdispel', label: 'Mass Dispel' },
+                                    { id: RaidUtility.Revival, icon: 'spell_monk_revival', label: 'Revival' },
+                                    { id: RaidUtility.CurseDispel, icon: 'spell_nature_removecurse', label: 'Curse' },
+                                    { id: RaidUtility.PoisonDispel, icon: 'spell_nature_nullifypoison', label: 'Poison' },
+                                    { id: RaidUtility.DiseaseDispel, icon: 'spell_holy_nullifydisease', label: 'Disease' },
+                                    { id: RaidUtility.Soothe, icon: 'ability_hunter_beastsoothe', label: 'Soothe' },
+                                ].map(dispel => {
+                                    const count = activeUtilities[dispel.id as RaidUtility] || 0;
+                                    return (
+                                        <Tooltip key={dispel.id}>
                                             <TooltipTrigger asChild>
                                                 <div className={cn(
                                                     "relative p-1 rounded-md border transition-all hover:scale-105 active:scale-95 cursor-default",
@@ -555,30 +551,28 @@ export function CompReport({ roster }: { roster: Player[] }) {
                                                 {count > 0 && renderContributors(utilityContributors[dispel.id as RaidUtility])}
                                             </TooltipContent>
                                         </Tooltip>
-                                    </TooltipProvider>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="space-y-2">
-                        <h3 className="text-xs font-bold uppercase text-muted-foreground">Crowd Control</h3>
-                        <div className="grid grid-cols-1 gap-1">
-                            {[
-                                { id: RaidUtility.AoeStun, icon: 'ability_monk_legsweep', label: 'AOE Stuns' },
-                                { id: RaidUtility.Knock, icon: 'ability_racial_wingbuffet', label: 'Knockbacks' },
-                                { id: RaidUtility.AoeGrip, icon: 'ability_deathknight_aoedeathgrip', label: 'AOE Grips' },
-                                { id: RaidUtility.Sucks, icon: 'spell_druid_ursolsvortex', label: 'Sucks' },
-                                { id: RaidUtility.OppressingRoar, icon: 'ability_evoker_oppressingroar', label: 'Oppressing Roar' },
-                                { id: RaidUtility.StStun, icon: 'spell_holy_sealofmight', label: 'ST Stuns' },
-                                { id: RaidUtility.Grip, icon: 'spell_deathknight_strangulate', label: 'Grips' },
-                                { id: RaidUtility.Slow, icon: 'spell_nature_strengthofearthtotem02', label: 'Slows' },
-                                { id: RaidUtility.HardCC, icon: 'spell_nature_polymorph', label: 'Hard CC' },
-                            ].map(util => {
-                                const count = activeUtilities[util.id as RaidUtility] || 0;
-                                return (
-                                    <TooltipProvider key={util.id}>
-                                        <Tooltip>
+                        <div className="space-y-2">
+                            <h3 className="text-xs font-bold uppercase text-muted-foreground">Crowd Control</h3>
+                            <div className="grid grid-cols-1 gap-1">
+                                {[
+                                    { id: RaidUtility.AoeStun, icon: 'ability_monk_legsweep', label: 'AOE Stuns' },
+                                    { id: RaidUtility.Knock, icon: 'ability_racial_wingbuffet', label: 'Knockbacks' },
+                                    { id: RaidUtility.AoeGrip, icon: 'ability_deathknight_aoedeathgrip', label: 'AOE Grips' },
+                                    { id: RaidUtility.Sucks, icon: 'spell_druid_ursolsvortex', label: 'Sucks' },
+                                    { id: RaidUtility.OppressingRoar, icon: 'ability_evoker_oppressingroar', label: 'Oppressing Roar' },
+                                    { id: RaidUtility.StStun, icon: 'spell_holy_sealofmight', label: 'ST Stuns' },
+                                    { id: RaidUtility.Grip, icon: 'spell_deathknight_strangulate', label: 'Grips' },
+                                    { id: RaidUtility.Slow, icon: 'spell_nature_strengthofearthtotem02', label: 'Slows' },
+                                    { id: RaidUtility.HardCC, icon: 'spell_nature_polymorph', label: 'Hard CC' },
+                                ].map(util => {
+                                    const count = activeUtilities[util.id as RaidUtility] || 0;
+                                    return (
+                                        <Tooltip key={util.id}>
                                             <TooltipTrigger asChild>
                                                 <div className={cn(
                                                     "text-xs flex items-center justify-between pr-2 py-0.5 cursor-help",
@@ -600,19 +594,18 @@ export function CompReport({ roster }: { roster: Player[] }) {
                                                 {count > 0 && renderContributors(utilityContributors[util.id as RaidUtility])}
                                             </TooltipContent>
                                         </Tooltip>
-                                    </TooltipProvider>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Armor Distribution - Moved to bottom full width for better layout */}
-            <div className="space-y-2 pt-4 border-t">
-                <div className="flex items-center gap-1.5">
-                    <h3 className="text-xs font-bold uppercase text-muted-foreground">Armor Distribution</h3>
-                    <TooltipProvider>
+
+                {/* Distribution Section (Armor & Main Stat) */}
+                <div className="space-y-2.5 pt-4 border-t">
+                    <div className="flex items-center gap-1.5">
+                        <h3 className="text-xs font-bold uppercase text-muted-foreground">Loot Composition</h3>
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Info className="w-3.5 h-3.5 text-muted-foreground/50 cursor-help" />
@@ -621,26 +614,109 @@ export function CompReport({ roster }: { roster: Player[] }) {
                                 In Midnight, tier tokens are grouped by armor type.
                             </TooltipContent>
                         </Tooltip>
-                    </TooltipProvider>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {Object.values(ArmorType).map(armor => (
-                        <div key={armor} className="text-xs space-y-1">
-                            <div className="flex justify-between mb-0.5">
-                                <span className="text-muted-foreground opacity-80">{armor}</span>
-                                <span className="font-mono font-bold">{armorCounts[armor]}</span>
-                            </div>
-                            <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-indigo-500 transition-all"
-                                    style={{ width: `${(armorCounts[armor] / Math.max(1, roster.length)) * 100}%` }}
-                                />
-                            </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        {/* Armor Distribution Bar */}
+                        <div className="h-5 w-full bg-secondary rounded-md overflow-hidden flex">
+                            {(() => {
+                                const totalAssigned = Object.values(armorCounts).reduce((a, b) => a + b, 0);
+                                if (totalAssigned === 0) return null;
+
+                                return [
+                                    { type: ArmorType.Plate, color: "#64748b" },
+                                    { type: ArmorType.Mail, color: "#34d399" },
+                                    { type: ArmorType.Leather, color: "#fb923c" },
+                                    { type: ArmorType.Cloth, color: "#818cf8" },
+                                ].map(({ type, color }) => {
+                                    const count = armorCounts[type];
+                                    if (count === 0) return null;
+
+                                    const percentage = (count / totalAssigned) * 100;
+                                    const showLabel = percentage > 12;
+
+                                    return (
+                                        <Tooltip
+                                            key={type}
+                                            className="h-full"
+                                            style={{ width: `${percentage}%` }}
+                                        >
+                                            <TooltipTrigger asChild>
+                                                <div
+                                                    className="h-full w-full flex items-center justify-center overflow-hidden border-r border-black/10 last:border-0 relative group cursor-help transition-all hover:brightness-110"
+                                                    style={{
+                                                        backgroundColor: color
+                                                    }}
+                                                >
+                                                    {showLabel && (
+                                                        <span className="text-[10px] font-bold text-black/80 truncate px-1 uppercase whitespace-nowrap">
+                                                            {type} ({count})
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <div className="text-xs font-bold">{type}</div>
+                                                <div className="text-xs">Count: {count}</div>
+                                                <div className="text-xs opacity-70">{percentage.toFixed(1)}%</div>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    );
+                                });
+                            })()}
                         </div>
-                    ))}
+
+                        {/* Main Stat Distribution Bar */}
+                        <div className="h-5 w-full bg-secondary rounded-md overflow-hidden flex">
+                            {(() => {
+                                const totalAssigned = Object.values(mainStatCounts).reduce((a, b) => a + b, 0);
+                                if (totalAssigned === 0) return null;
+
+                                return [
+                                    { type: MainStat.Intellect, color: "#60a5fa" },
+                                    { type: MainStat.Strength, color: "#f87171" },
+                                    { type: MainStat.Agility, color: "#4ade80" },
+                                ].map(({ type, color }) => {
+                                    const count = mainStatCounts[type] || 0;
+                                    if (count === 0) return null;
+
+                                    const percentage = (count / totalAssigned) * 100;
+                                    const showLabel = percentage > 12;
+
+                                    return (
+                                        <Tooltip
+                                            key={type}
+                                            className="h-full"
+                                            style={{ width: `${percentage}%` }}
+                                        >
+                                            <TooltipTrigger asChild>
+                                                <div
+                                                    className="h-full w-full flex items-center justify-center overflow-hidden border-r border-black/10 last:border-0 relative group cursor-help transition-all hover:brightness-110"
+                                                    style={{
+                                                        backgroundColor: color
+                                                    }}
+                                                >
+                                                    {showLabel && (
+                                                        <span className="text-[10px] font-bold text-black/80 truncate px-1 uppercase whitespace-nowrap">
+                                                            {type} ({count})
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <div className="text-xs font-bold">{type}</div>
+                                                <div className="text-xs">Count: {count}</div>
+                                                <div className="text-xs opacity-70">{percentage.toFixed(1)}%</div>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    );
+                                });
+                            })()}
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </TooltipProvider>
     );
 }
 

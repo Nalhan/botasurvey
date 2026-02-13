@@ -6,13 +6,14 @@ import { cn } from "@/lib/utils";
 
 const TooltipProvider = ({ children }: { children: React.ReactNode }) => <>{children}</>;
 
-const Tooltip = ({ children }: { children: React.ReactNode }) => {
+const Tooltip = ({ children, className, style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) => {
     const [open, setOpen] = React.useState(false);
     const triggerRef = React.useRef<HTMLElement>(null);
 
     return (
         <div
-            className="inline-block"
+            className={cn("inline-block", className)}
+            style={style}
             onMouseEnter={() => setOpen(true)}
             onMouseLeave={() => setOpen(false)}
         >

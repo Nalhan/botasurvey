@@ -143,6 +143,64 @@ export const CLASS_ARMOR_TYPES: Record<string, ArmorType> = {
     "warrior": ArmorType.Plate
 };
 
+export enum MainStat {
+    Intellect = "Intellect",
+    Agility = "Agility",
+    Strength = "Strength"
+}
+
+export const SPEC_MAIN_STATS: Record<string, MainStat> = {
+
+    // Death Knight
+    "death_knight": MainStat.Strength,
+
+    // Demon Hunter
+    "demon_hunter": MainStat.Agility,
+    "demon_hunter-devourer": MainStat.Intellect, // Custom spec in this codebase? "Devourer"? Let's support it if it's there.
+
+    // Druid
+    "druid-balance": MainStat.Intellect,
+    "druid-restoration": MainStat.Intellect,
+    "druid-feral": MainStat.Agility,
+    "druid-guardian": MainStat.Agility,
+
+    // Evoker
+    "evoker": MainStat.Intellect,
+
+    // Hunter
+    "hunter": MainStat.Agility,
+
+    // Mage
+    "mage": MainStat.Intellect,
+
+    // Monk
+    "monk-mistweaver": MainStat.Intellect,
+    "monk-brewmaster": MainStat.Agility,
+    "monk-windwalker": MainStat.Agility,
+
+    // Paladin
+    "paladin-holy": MainStat.Intellect,
+    "paladin-protection": MainStat.Strength,
+    "paladin-retribution": MainStat.Strength,
+
+    // Priest
+    "priest": MainStat.Intellect,
+
+    // Rogue
+    "rogue": MainStat.Agility,
+
+    // Shaman
+    "shaman-elemental": MainStat.Intellect,
+    "shaman-restoration": MainStat.Intellect,
+    "shaman-enhancement": MainStat.Agility,
+
+    // Warlock
+    "warlock": MainStat.Intellect,
+
+    // Warrior
+    "warrior": MainStat.Strength
+};
+
 // Capabilities by Class/Spec
 // Format: "classId-specId" or just "classId" if it applies to all specs
 export const SPEC_CAPABILITIES: Record<string, { buffs: RaidBuff[], utilities: RaidUtility[] }> = {
