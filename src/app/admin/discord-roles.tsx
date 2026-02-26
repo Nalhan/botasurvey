@@ -130,9 +130,20 @@ export function DiscordRoles({ data, roles, roster, initialRoleMappings }: Disco
             const targetRoleIds = new Set<string>();
 
             // Target Set A: Class
+            let classIdToUse: string | null = null;
             const playerInRoster = roster.find(p => p.userId === user.internalId);
+
             if (playerInRoster) {
-                const wowClass = WOW_CLASSES.find(c => c.id === playerInRoster.classId);
+                classIdToUse = playerInRoster.classId;
+            } else if (user.submission?.specs && Array.isArray(user.submission.specs)) {
+                const sortedSpecs = [...user.submission.specs].sort((a: any, b: any) => a.rank - b.rank);
+                if (sortedSpecs.length > 0) {
+                    classIdToUse = sortedSpecs[0].classId;
+                }
+            }
+
+            if (classIdToUse) {
+                const wowClass = WOW_CLASSES.find(c => c.id === classIdToUse);
                 if (wowClass) {
                     let rId = roleMappings[wowClass.id];
                     if (!rId) {
