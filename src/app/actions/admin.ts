@@ -138,7 +138,7 @@ export async function refreshDiscordCache() {
         return { success: false, error: "Unauthorized" };
     }
 
-    revalidateTag('discord');
+    revalidateTag('discord', 'page');
 
     return { success: true };
 }
