@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DiscordRole } from "@/lib/discord";
-import { bulkApplyDiscordChanges } from "@/app/actions/admin";
+import { bulkApplyDiscordChanges, removeRoleFromAllDiscordMembers } from "@/app/actions/admin";
 import { Loader2, Save, Undo, Wand2, AlertTriangle, X, PlusCircle, ChevronDown, Check } from "lucide-react";
 import { WOW_CLASSES } from "@/lib/wow-classes";
 import { WOW_PROFESSIONS } from "@/lib/wow-professions";
@@ -42,10 +42,14 @@ interface DiscordRolesProps {
 }
 
 export function DiscordRoles({ data, roles, roster, initialRoleMappings }: DiscordRolesProps) {
-    const [activeTab, setActiveTab] = useState<'roles' | 'settings'>('roles');
+    const [activeTab, setActiveTab] = useState<'roles' | 'settings' | 'bulk'>('roles');
     const [stagedChanges, setStagedChanges] = useState<Record<string, { nick?: string, roles: Set<string> }>>({});
     const [isSaving, setIsSaving] = useState(false);
     const [warnings, setWarnings] = useState<string[]>([]);
+
+    // Bulk Actions State
+    const [isBulkRemoving, setIsBulkRemoving] = useState(false);
+    const [bulkRemoveRole, setBulkRemoveRole] = useState<string>("");
 
     // Mappings State
     const [roleMappings, setRoleMappings] = useState<Record<string, string>>(initialRoleMappings);
@@ -240,6 +244,33 @@ export function DiscordRoles({ data, roles, roster, initialRoleMappings }: Disco
         }
     };
 
+    const handleBulkRemove = async () => {
+        if (!bulkRemoveRole) return;
+        const role = roles.find(r => r.id === bulkRemoveRole);
+        if (!role) return;
+
+        if (!confirm(`Are you absolutely sure you want to remove the role "@${role.name}" from EVERYONE who has it in the Discord server? This cannot be undone.`)) {
+            return;
+        }
+
+        setIsBulkRemoving(true);
+        try {
+            const result = await removeRoleFromAllDiscordMembers(bulkRemoveRole);
+            if (result.success) {
+                alert(`Successfully removed role from ${result.count} members!`);
+                window.location.reload();
+            } else {
+                alert(`Removed from ${result?.count || 0}, but failed for ${result?.failed || 0}. ${result?.error || ""}`);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error executing bulk removal");
+        } finally {
+            setIsBulkRemoving(false);
+            setBulkRemoveRole("");
+        }
+    };
+
     const hasChanges = Object.keys(stagedChanges).length > 0;
 
     return (
@@ -257,6 +288,12 @@ export function DiscordRoles({ data, roles, roster, initialRoleMappings }: Disco
                         className={cn("px-4 py-2 text-sm font-medium rounded-md transition-colors", activeTab === 'settings' ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
                     >
                         Mapping Settings
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('bulk')}
+                        className={cn("px-4 py-2 text-sm font-medium rounded-md transition-colors", activeTab === 'bulk' ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground")}
+                    >
+                        Bulk Actions
                     </button>
                 </div>
             </div>
@@ -472,6 +509,45 @@ export function DiscordRoles({ data, roles, roster, initialRoleMappings }: Disco
                                     );
                                 })}
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* BULK ACTIONS TAB */}
+            {activeTab === 'bulk' && (
+                <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="flex justify-between items-center pb-4 border-b">
+                        <div>
+                            <h2 className="text-lg font-semibold text-rose-500">Danger Zone: Bulk Actions</h2>
+                            <p className="text-sm text-muted-foreground">Perform actions on all members of the Discord server, including those not registered on this site.</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-card border rounded-lg p-6 space-y-4 shadow-sm border-rose-500/20">
+                        <div>
+                            <h3 className="font-medium text-base mb-1">Remove Role From Everyone</h3>
+                            <p className="text-sm text-muted-foreground mb-4">
+                                Select a role to remove it from <strong className="text-rose-500">every single member</strong> in the Discord server who currently has it. This action cannot be undone.
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-4 max-w-lg">
+                            <div className="flex-1">
+                                <RoleSelector
+                                    roles={roles}
+                                    value={bulkRemoveRole}
+                                    onSelect={setBulkRemoveRole}
+                                    placeholder="Select role to remove..."
+                                />
+                            </div>
+                            <Button
+                                variant="destructive"
+                                onClick={handleBulkRemove}
+                                disabled={!bulkRemoveRole || isBulkRemoving}
+                            >
+                                {isBulkRemoving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <AlertTriangle className="w-4 h-4 mr-2" />}
+                                Remove From All
+                            </Button>
                         </div>
                     </div>
                 </div>

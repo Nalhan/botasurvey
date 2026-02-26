@@ -78,3 +78,53 @@ export async function deleteUser(userId: string) {
         return { success: false, error: "Failed to delete user" };
     }
 }
+
+export async function removeRoleFromAllDiscordMembers(roleId: string) {
+    const session = await auth();
+    const isUserAdmin = await isAdmin(session);
+
+    if (!isUserAdmin) {
+        return { success: false, error: "Unauthorized" };
+    }
+
+    const { listGuildMembers, updateGuildMemberRoles } = await import("@/lib/discord");
+
+    const membersMap = await listGuildMembers();
+    const members = Array.from(membersMap.entries());
+
+    const membersWithRole = members.filter(([_, data]) => data.roles.includes(roleId));
+
+    if (membersWithRole.length === 0) {
+        return { success: true, count: 0 };
+    }
+
+    const batchSize = 5;
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < membersWithRole.length; i += batchSize) {
+        const batch = membersWithRole.slice(i, i + batchSize);
+        const results = await Promise.all(
+            batch.map(async ([userId, data]) => {
+                const newRoles = data.roles.filter(r => r !== roleId);
+                return await updateGuildMemberRoles(userId, newRoles);
+            })
+        );
+
+        results.forEach(r => {
+            if (r) successCount++;
+            else failCount++;
+        });
+
+        if (i + batchSize < membersWithRole.length) {
+            await new Promise(r => setTimeout(r, 1000));
+        }
+    }
+
+    return {
+        success: failCount === 0,
+        count: successCount,
+        failed: failCount,
+        error: failCount > 0 ? `Failed to update ${failCount} members` : undefined
+    };
+}
