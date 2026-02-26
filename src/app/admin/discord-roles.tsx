@@ -117,6 +117,11 @@ export function DiscordRoles({ data, roles, roster, initialRoleMappings }: Disco
             if (match) managedRoleIds.add(match.id);
         });
 
+        const raiderMatch = roles.find(r => r.name.toLowerCase() === "raider");
+        if (raiderMatch) managedRoleIds.add(raiderMatch.id);
+        const casualMatch = roles.find(r => r.name.toLowerCase() === "casual");
+        if (casualMatch) managedRoleIds.add(casualMatch.id);
+
         // 2. Process each user
         data.forEach(user => {
             if (!user.discordId || !user.discordData?.isInGuild) return;
@@ -157,6 +162,22 @@ export function DiscordRoles({ data, roles, roster, initialRoleMappings }: Disco
                         if (rId) targetRoleIds.add(rId);
                     }
                 });
+            }
+
+            // Target Set C: Involvement
+            const involvement = user.submission?.involvement;
+            if (involvement === "core" || involvement === "fill") {
+                const raiderMatch = roles.find(r => r.name.toLowerCase() === "raider");
+                if (raiderMatch) targetRoleIds.add(raiderMatch.id);
+                else if (!newWarnings.includes(`No role for 'Raider'`)) {
+                    newWarnings.push(`No role for 'Raider'`);
+                }
+            } else if (involvement === "heroic") {
+                const casualMatch = roles.find(r => r.name.toLowerCase() === "casual");
+                if (casualMatch) targetRoleIds.add(casualMatch.id);
+                else if (!newWarnings.includes(`No role for 'Casual'`)) {
+                    newWarnings.push(`No role for 'Casual'`);
+                }
             }
 
             // C. Sync Logic: Start with live, Add Targets, Remove unselected Managed
