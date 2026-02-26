@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DiscordRole } from "@/lib/discord";
-import { bulkApplyDiscordChanges, removeRoleFromAllDiscordMembers } from "@/app/actions/admin";
-import { Loader2, Save, Undo, Wand2, AlertTriangle, X, PlusCircle, ChevronDown, Check } from "lucide-react";
+import { bulkApplyDiscordChanges, removeRoleFromAllDiscordMembers, refreshDiscordCache } from "@/app/actions/admin";
+import { Loader2, Save, Undo, Wand2, AlertTriangle, X, PlusCircle, ChevronDown, Check, RefreshCw } from "lucide-react";
 import { WOW_CLASSES } from "@/lib/wow-classes";
 import { WOW_PROFESSIONS } from "@/lib/wow-professions";
 import { ZamIcon } from "@/components/ui/zam-icon";
@@ -45,6 +45,7 @@ export function DiscordRoles({ data, roles, roster, initialRoleMappings }: Disco
     const [activeTab, setActiveTab] = useState<'roles' | 'settings' | 'bulk'>('roles');
     const [stagedChanges, setStagedChanges] = useState<Record<string, { nick?: string, roles: Set<string> }>>({});
     const [isSaving, setIsSaving] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [warnings, setWarnings] = useState<string[]>([]);
 
     // Bulk Actions State
@@ -56,6 +57,23 @@ export function DiscordRoles({ data, roles, roster, initialRoleMappings }: Disco
     const [isSavingSettings, setIsSavingSettings] = useState(false);
 
     // --- Actions ---
+
+    const handleRefreshCache = async () => {
+        setIsRefreshing(true);
+        try {
+            const result = await refreshDiscordCache();
+            if (result.success) {
+                window.location.reload();
+            } else {
+                alert("Failed to refresh Discord cache: " + result.error);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error refreshing cache");
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
 
     const handleStageRole = (userId: string, roleId: string, action: 'add' | 'remove') => {
         setStagedChanges(prev => {
@@ -338,6 +356,10 @@ export function DiscordRoles({ data, roles, roster, initialRoleMappings }: Disco
                             <Button size="sm" variant="outline" onClick={handleAutoStage} className="gap-2">
                                 <Wand2 className="w-3 h-3 text-indigo-500" />
                                 Auto-Stage Managed Roles
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={handleRefreshCache} disabled={isRefreshing} className="gap-2">
+                                <RefreshCw className={cn("w-3 h-3 text-blue-500", isRefreshing && "animate-spin")} />
+                                Refresh Discord Data
                             </Button>
                             {warnings.length > 0 && (
                                 <div className="flex items-center gap-2 text-amber-500 text-xs bg-amber-500/10 px-3 py-1.5 rounded border border-amber-500/20">

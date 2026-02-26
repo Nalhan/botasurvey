@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { isAdmin } from "@/lib/admin";
 import { updateGuildMember, getGuildMember } from "@/lib/discord";
+import { revalidateTag } from "next/cache";
 
 interface DiscordChange {
     userId: string;
@@ -127,4 +128,17 @@ export async function removeRoleFromAllDiscordMembers(roleId: string) {
         failed: failCount,
         error: failCount > 0 ? `Failed to update ${failCount} members` : undefined
     };
+}
+
+export async function refreshDiscordCache() {
+    const session = await auth();
+    const isUserAdmin = await isAdmin(session);
+
+    if (!isUserAdmin) {
+        return { success: false, error: "Unauthorized" };
+    }
+
+    revalidateTag('discord');
+
+    return { success: true };
 }
